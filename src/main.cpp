@@ -1,5 +1,3 @@
-#include "spi.h"
-#include "cc1125.h"
 #include "utils.h"
 #include "status_led.h"
 #include "color.h"
@@ -12,48 +10,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-ALIGNED static ENetRXDesc rx_descriptors[10];
-ALIGNED static ENetTXDesc tx_descriptors[10];
-
-void setup_rx_descriptor(ENetRXDesc* desc, void* buffer) {
-  zero(sizeof(ENetRXDesc), (void*)desc);
-  desc->rbs1 = 1504;
-  desc->rbs2 = 0;
-  desc->buffer1_addr = buffer;
-  desc->own = 1;
-}
-
-void reset_rx_descriptor(ENetRXDesc* desc) {
-  desc->own = 1;
-}
-
-void setup_tx_descriptor(ENetTXDesc* desc, void* buffer) {
-  zero(sizeof(ENetTXDesc), (void*)desc);
-  desc->tbs1 = 1504;
-  desc->tbs2 = 0;
-  desc->buffer1_addr = buffer;
-  desc->own = 1;
-}
-
-void reset_tx_descriptor(ENetTXDesc* desc) {
-  desc->own = 1;
-}
-
+ethernet::dma::DescriptorMgr<20> desc_mgr;
 
 void EthernetMac_ISR(void) {
-  for(int index = 0; index < 10; index++) {
-    if(rx_descriptors[index].own == 0) {
-      if(*((uint32_t*)rx_descriptors[index].buffer1_addr) != 0x00C28001) {
-        UART0_DR = '.';
-      }
-      reset_rx_descriptor(&(rx_descriptors[index]));
-    }
-  }
-  for(int index = 0; index < 10; index++) {
-    if(tx_descriptors[index].own = 0) {
-      reset_tx_descriptor(&(tx_descriptors[index]));
-    }
-  }
+  desc_mgr.disown_all();
+  UART0_DR = '.';
   EMAC_DMARIS |= BIT_6;
 }
 
@@ -97,54 +58,6 @@ int main(void){
 
 
   // ============== Setup EMAC / PHY =====================
-  // Setup descriptors and buffers
-  char rx_buffer_0[1504];
-  char rx_buffer_1[1504];
-  char rx_buffer_2[1504];
-  char rx_buffer_3[1504];
-  char rx_buffer_4[1504];
-  char rx_buffer_5[1504];
-  char rx_buffer_6[1504];
-  char rx_buffer_7[1504];
-  char rx_buffer_8[1504];
-  char rx_buffer_9[1504];
-
-  setup_rx_descriptor(&rx_descriptors[0], rx_buffer_0);
-  setup_rx_descriptor(&rx_descriptors[1], rx_buffer_1);
-  setup_rx_descriptor(&rx_descriptors[2], rx_buffer_2);
-  setup_rx_descriptor(&rx_descriptors[3], rx_buffer_3);
-  setup_rx_descriptor(&rx_descriptors[4], rx_buffer_4);
-  setup_rx_descriptor(&rx_descriptors[5], rx_buffer_5);
-  setup_rx_descriptor(&rx_descriptors[6], rx_buffer_6);
-  setup_rx_descriptor(&rx_descriptors[7], rx_buffer_7);
-  setup_rx_descriptor(&rx_descriptors[8], rx_buffer_8);
-  setup_rx_descriptor(&rx_descriptors[9], rx_buffer_9);
-  rx_descriptors[9].rer = 1;
-
-  char tx_buffer_0[1504];
-  char tx_buffer_1[1504];
-  char tx_buffer_2[1504];
-  char tx_buffer_3[1504];
-  char tx_buffer_4[1504];
-  char tx_buffer_5[1504];
-  char tx_buffer_6[1504];
-  char tx_buffer_7[1504];
-  char tx_buffer_8[1504];
-  char tx_buffer_9[1504];
-
-  setup_tx_descriptor(&tx_descriptors[0], tx_buffer_0);
-  setup_tx_descriptor(&tx_descriptors[1], tx_buffer_1);
-  setup_tx_descriptor(&tx_descriptors[2], tx_buffer_2);
-  setup_tx_descriptor(&tx_descriptors[3], tx_buffer_3);
-  setup_tx_descriptor(&tx_descriptors[4], tx_buffer_4);
-  setup_tx_descriptor(&tx_descriptors[5], tx_buffer_5);
-  setup_tx_descriptor(&tx_descriptors[6], tx_buffer_6);
-  setup_tx_descriptor(&tx_descriptors[7], tx_buffer_7);
-  setup_tx_descriptor(&tx_descriptors[8], tx_buffer_8);
-  setup_tx_descriptor(&tx_descriptors[9], tx_buffer_9);
-  tx_descriptors[9].ter = 1;
-
-
   // Setup Jack LEDS
   PORT_F_AFSEL = 0x000000FF;
   PORT_F_PCTL  = 0x55555555;
@@ -171,8 +84,7 @@ int main(void){
 
   // Ext. desc size
   EMAC_DMABUSMOD = 0x00020180;
-  EMAC_RXDLADDR = (void*)&rx_descriptors[0];
-  EMAC_TXDLADDR = (void*)&tx_descriptors[0];
+  desc_mgr.install();
   EMAC_DMAIM = BIT_6 | BIT_7 | BIT_8 | BIT_13 | BIT_15;
 
   // Configure the MAC

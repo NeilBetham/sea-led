@@ -3,7 +3,7 @@ load("@bazel_arm_none//:utils.bzl", "gdb_bin")
 cc_library(
   name = "sea-led-lib",
   hdrs = glob(["include/**/*.h"]),
-  srcs = glob(["src/**/*.c"], exclude = ["src/startup.c"]),
+  srcs = glob(["src/**/*.cpp"], exclude = ["src/startup.cpp", "src/handlers.cpp"]),
   strip_include_prefix = "include/",
   copts = [
     "-ggdb",
@@ -18,7 +18,10 @@ cc_library(
 
 cc_binary(
   name = "sea-led",
-  srcs = ["src/startup.c"],
+  srcs = [
+      "src/startup.cpp",
+      "src/handlers.cpp",
+  ],
   deps = [
     ":sea-led-lib",
     ":ld/TM4C129ENCZAD.ld",

@@ -1,145 +1,110 @@
+// @brief Classes for dealing with ethernet via DMA
 #pragma once
 
-#include <stdint.h>
+#include "ethernet_defs.h"
+#include "registers/emac.h"
 
-// Ethernet MAC DMA Descriptors
-// RX Enhanced
-typedef struct {
-  // RDES0
-  // Byte 0
-  uint8_t ext_stat: 1;
-  uint8_t ce: 1;
-  uint8_t dribble_err: 1;
-  uint8_t re: 1;
-  uint8_t rwt: 1;
-  uint8_t ft: 1;
-  uint8_t lc: 1;
-  uint8_t tagf: 1;
+#include <array>
+#include <string.h>
 
-  // Byte 1
-  uint8_t ls: 1;
-  uint8_t fs: 1;
-  uint8_t vlan: 1;
-  uint8_t oe: 1;
-  uint8_t le: 1;
-  uint8_t saf: 1;
-  uint8_t desc_err: 1;
-  uint8_t es: 1;
+namespace ethernet {
+namespace dma {
 
-  // Byte 2/3
-  uint16_t fl: 14;
-  uint8_t afm: 1;
-  uint8_t own: 1;
 
-  // RDES1
-  uint16_t rbs1: 13;
-  uint8_t : 1;
-  uint8_t rch: 1;
-  uint8_t rer: 1;
-  uint16_t rbs2: 13;
-  uint8_t :2;
-  uint8_t dioc: 1;
+/// @brief Manages the underlying buffer for a DMA descriptor
+template <size_t BUFFER_SIZE>
+class Buffer {
+public:
+  Buffer() { zero(); };
 
-  // RDES2
-  void* buffer1_addr;
+  constexpr size_t size() { return BUFFER_SIZE; }
+  uint8_t* buffer() { return _buffer; };
+  void zero() { memset(_buffer, 0, BUFFER_SIZE); };
 
-  // RDES3
-  union {
-    void* buffer2_addr;
-    void* next_desc_addr;
+private:
+  ALIGNED uint8_t _buffer[BUFFER_SIZE];
+};
+
+/// @brief Manages the RX descriptor and it's underlying buffer
+template <size_t BUFFER_SIZE>
+class RXDescriptor {
+public:
+  void setup_descriptor(ENetRXDesc* descriptor) {
+    _descriptor = descriptor;
+    _descriptor->rbs1 = BUFFER_SIZE;
+    _descriptor->rbs2 = 0;
+    _descriptor->buffer1_addr = _buffer.buffer();
+    reset_owner();
   };
 
-  // RDES4
-  // Byte 0
-  uint8_t ip_type: 3;
-  uint8_t ip_hdr_err: 1;
-  uint8_t ip_pyld_err: 1;
-  uint8_t ip_chk_bp: 1;
-  uint8_t ip_v4_rcv: 1;
-  uint8_t ip_v6_rcv: 1;
+  void reset_owner() { _descriptor->own = 1; };
+  void zero() { _buffer.zero(); };
+  Buffer<BUFFER_SIZE>& buffer() { return _buffer; };
 
-  // Byte 1
-  uint8_t message_type: 4;
-  uint8_t ptp_frm_type: 1;
-  uint8_t ptp_ver: 1;
-  uint8_t ts_dropped: 1;
-  uint8_t : 1;
+private:
+  Buffer<BUFFER_SIZE> _buffer;
+  ENetRXDesc* _descriptor = NULL;
+};
 
-  // Byte 2/3
-  uint16_t : 16;
-
-  // RDES5
-  uint32_t : 32;
-
-  // RDES6
-  uint32_t rx_ts_l;
-
-  // RDES7
-  uint32_t rx_ts_h;
-} PACKED ENetRXDesc;
-
-// TX Enhanced
-typedef struct {
-  // TDES0
-  // Byte 3
-  uint8_t db: 1;
-  uint8_t uf: 1;
-  uint8_t ed: 1;
-  uint8_t cc: 4;
-  uint8_t fv: 1;
-
-  // Byte 2
-  uint8_t ec: 1;
-  uint8_t lcollision: 1;
-  uint8_t nc: 1;
-  uint8_t lcarrier: 1;
-  uint8_t ipe: 1;
-  uint8_t ff: 1;
-  uint8_t jt: 1;
-  uint8_t es: 1;
-
-  // Byte 1
-  uint8_t ihe: 1;
-  uint8_t ttss: 1;
-  uint8_t vlic: 2;
-  uint8_t tch: 1;
-  uint8_t ter: 1;
-  uint8_t cic: 2;
-
-  // Byte 0
-  uint8_t crcr: 1;
-  uint8_t ttse: 1;
-  uint8_t dp: 1;
-  uint8_t dc: 1;
-  uint8_t fs: 1;
-  uint8_t ls: 1;
-  uint8_t ic: 1;
-  uint8_t own: 1;
-
-  // TDES1
-  uint16_t tbs1: 13;
-  uint8_t :3;
-  uint16_t tbs2: 13;
-  uint8_t saic: 3;
-
-  // TDES2
-  void* buffer1_addr;
-
-  // TDES3
-  union {
-    void* buffer2_addr;
-    void* next_desc_addr;
+/// @brief Manages the TX descriptor and it's underlying buffer
+template <size_t BUFFER_SIZE>
+class TXDescriptor {
+public:
+  void setup_descriptor(ENetTXDesc* descriptor) {
+    _descriptor = descriptor;
+    _descriptor->tbs1 = BUFFER_SIZE;
+    _descriptor->tbs2 = 0;
+    _descriptor->buffer1_addr = _buffer.buffer();
+    reset_owner();
   };
 
-  // TDES4/5
-  uint32_t : 32;
-  uint32_t : 32;
+  void reset_owner() { _descriptor->own = 1; };
+  void zero() { _buffer.zero(); };
+  Buffer<BUFFER_SIZE>& buffer() { return _buffer; };
 
-  // TDES6
-  uint32_t tx_ts_l;
+private:
+  Buffer<BUFFER_SIZE> _buffer;
+  ENetTXDesc* _descriptor = NULL;
+};
 
-  // TDES7
-  uint32_t tx_ts_h;
+/// @brief Manages a list of descriptors and the associated registers in the ENet DMA
+template <int BUFFER_COUNT = 10, size_t BUFFER_SIZE = 2000>
+class DescriptorMgr {
+public:
+  DescriptorMgr() {
+    for(int index = 0; index < BUFFER_COUNT; index++) {
+      _rx[index].setup_descriptor(&_rx_descriptors[index]);
+      _tx[index].setup_descriptor(&_tx_descriptors[index]);
+    }
+    _rx_descriptors[BUFFER_COUNT - 1].rer = 1;
+    _tx_descriptors[BUFFER_COUNT - 1].ter = 1;
+  };
 
-} PACKED ENetTXDesc;
+  void install() {
+    EMAC_DMABUSMOD |= BIT_7;  // Set descriptor length to 8 bytes
+    EMAC_RXDLADDR = (uint32_t)&_rx_descriptors;
+    EMAC_TXDLADDR = (uint32_t)&_tx_descriptors;
+  };
 
+  void remove() {
+    EMAC_RXDLADDR = 0;
+    EMAC_TXDLADDR = 0;
+  };
+
+  void disown_all() {
+    for(int index = 0; index < BUFFER_COUNT; index++) {
+      _rx[index].reset_owner();
+      _tx[index].reset_owner();
+    }
+  }
+
+private:
+  ALIGNED ENetRXDesc _rx_descriptors[BUFFER_COUNT];
+  ALIGNED ENetTXDesc _tx_descriptors[BUFFER_COUNT];
+  std::array<RXDescriptor<BUFFER_SIZE>, BUFFER_COUNT> _rx;
+  std::array<TXDescriptor<BUFFER_SIZE>, BUFFER_COUNT> _tx;
+};
+
+
+} // namespace dma
+} // namespace ethernet

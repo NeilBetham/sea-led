@@ -16,7 +16,7 @@ static inline void copy(uint32_t count, const uint8_t* src, uint8_t* dest) {
 }
 
 // Causes the uC to reset
-static inline void abort() {
+static inline void reset() {
   CORE_APINT &= ~(0xFFFF0000);
   CORE_APINT |=   0x5FA00004;
 }
