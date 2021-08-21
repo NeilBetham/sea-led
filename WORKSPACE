@@ -5,11 +5,11 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 # External dep compilation tools
 http_archive(
   name = "rules_foreign_cc",
-  url = "https://github.com/bazelbuild/rules_foreign_cc/archive/d54c78ab86b40770ee19f0949db9d74a831ab9f0.tar.gz",
-  sha256 = "e7446144277c9578141821fc91c55a61df7ae01bda890902f7286f5fd2f6ae46",
-  strip_prefix="rules_foreign_cc-d54c78ab86b40770ee19f0949db9d74a831ab9f0",
+  url = "https://github.com/bazelbuild/rules_foreign_cc/archive/3b72ab3468cc8b101352dbe681353a2f8821a057.tar.gz",
+  sha256 = "682fa59997d214d42743d822a1284780fd8fb0db4dd88bcb0725904b423cef20",
+  strip_prefix="rules_foreign_cc-3b72ab3468cc8b101352dbe681353a2f8821a057",
 )
-load("@rules_foreign_cc//:workspace_definitions.bzl", "rules_foreign_cc_dependencies")
+load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
 rules_foreign_cc_dependencies()
 
 # Bazel Toolchain for ARM embedded

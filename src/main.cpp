@@ -1,7 +1,8 @@
 #include "utils.h"
 #include "status_led.h"
 #include "color.h"
-#include "ethernet.h"
+#include "ethernet/dma.h"
+#include "ethernet/phy.h"
 #include "registers/uart.h"
 #include "registers/emac.h"
 #include "registers/sysctl.h"
@@ -11,11 +12,14 @@
 #include <string.h>
 
 ethernet::dma::DescriptorMgr<20> desc_mgr;
+ethernet::Phy phy_mgr;
 
 void EthernetMac_ISR(void) {
   desc_mgr.disown_all();
-  UART0_DR = '.';
-  EMAC_DMARIS |= BIT_6;
+  if(EMAC_DMARIS & (BIT_6 | BIT_14)) {
+    UART0_DR = '.';
+    EMAC_DMARIS |= BIT_6 | BIT_14;
+  }
 }
 
 int main(void){
@@ -57,45 +61,6 @@ int main(void){
   SYSCTL_RCGCUART = 0x000000FF;
 
 
-  // ============== Setup EMAC / PHY =====================
-  // Setup Jack LEDS
-  PORT_F_AFSEL = 0x000000FF;
-  PORT_F_PCTL  = 0x55555555;
-  PORT_F_DEN   = 0x000000FF;
-
-  // Turn on the MAC
-  SYSCTL_RCGCEMAC = 0x00000001;
-  SYSCTL_PCEMAC   = 0x00000001;
-
-  // Wait for the mac to boot
-  while(!(SYSCTL_PREMAC & BIT_0))
-
-  // Enable the PHY
-  EMAC_PC |= BIT_0;
-  SYSCTL_RCGCEPHY = 0x00000001;
-  SYSCTL_PCEPHY   = 0x00000001;
-
-  // Wait for the PHY to boot
-  while(!(SYSCTL_PREPHY & BIT_0))
-  EMAC_PC &= ~(BIT_0);
-
-  // DMA Setup
-  while(EMAC_DMABUSMOD & BIT_0)
-
-  // Ext. desc size
-  EMAC_DMABUSMOD = 0x00020180;
-  desc_mgr.install();
-  EMAC_DMAIM = BIT_6 | BIT_7 | BIT_8 | BIT_13 | BIT_15;
-
-  // Configure the MAC
-  EMAC_ADDR0L    = 0x5379E738;
-  EMAC_ADDR0H    = 0x0000B281;
-  EMAC_FRAMEFLTR = 0x00000010;
-  EMAC_CFG       = 0x30004C00;
-
-  // Enable DMA
-  EMAC_DMAOPMODE |= BIT_1;
-
   // ============== Setup UART ===========================
   // Enable UART Clock and associated GPIO port
   PORT_A_AFSEL   = 0x000000FF;
@@ -109,6 +74,58 @@ int main(void){
   UART0_LCRH      = 0x00000070;
   UART0_CC        = 0x00000000;
   UART0_CTL       = 0x00000301;
+
+
+  // ============== Setup EMAC / PHY =====================
+  // Init the PHY
+  phy_mgr.init();
+
+  // Turn on the MAC
+  SYSCTL_RCGCEMAC = 0x00000001;
+
+  // Reset the MAC
+  SYSCTL_SREMAC = BIT_0;
+  for(uint8_t index = 0; index < 16; index++);
+  SYSCTL_SREMAC   = 0x00000000;
+
+  // Wait for the mac to boot
+  while(!(SYSCTL_PREMAC & BIT_0))
+
+  // Reset the EMAC DMA
+  EMAC_DMABUSMOD |= BIT_0;
+  for(uint8_t index = 0; index < 16; index++);
+
+  // Wait for DMA reset to clear
+  while(EMAC_DMABUSMOD & BIT_0);
+
+  // Ext. desc size
+  EMAC_DMABUSMOD |= BIT_25 | BIT_23 | BIT_17;
+  desc_mgr.install();
+  EMAC_DMAIM = BIT_16 | BIT_0 | BIT_6;
+
+  // Disable a whole bunch of currrently uneeded interrutps
+  EMAC_MMCTXIM |= BIT_20 | BIT_15 | BIT_14 | BIT_1;
+  EMAC_MMCRXIM |= BIT_17 | BIT_6 | BIT_5 | BIT_0;
+  EMAC_IM |= BIT_9 | BIT_3;
+
+  // Enable interrupts for the PHY
+  EPHY_IM |= BIT_0;
+
+  // Configure the MAC
+  EMAC_ADDR0L    = 0x5379E738;
+  EMAC_ADDR0H    = 0x0000B281;
+  EMAC_FRAMEFLTR = 0x00000010;
+  EMAC_CFG       = 0x30000400;
+
+  // Confgure the MAC based on PHY state
+  phy_mgr.wait_for_link();
+  EMAC_CFG |= phy_mgr.get_mac_config();
+
+  // Put DMA into store and forward mode
+  EMAC_DMAOPMODE |= BIT_21 | BIT_25;
+
+  // Enable DMA RX
+  EMAC_DMAOPMODE |= BIT_1;
 
 
   // =============== Setup Peripherals  =======================

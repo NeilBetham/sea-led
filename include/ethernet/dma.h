@@ -1,7 +1,7 @@
 // @brief Classes for dealing with ethernet via DMA
 #pragma once
 
-#include "ethernet_defs.h"
+#include "ethernet/ethernet_defs.h"
 #include "registers/emac.h"
 
 #include <array>
@@ -30,14 +30,14 @@ template <size_t BUFFER_SIZE>
 class RXDescriptor {
 public:
   void setup_descriptor(ENetRXDesc* descriptor) {
+    *((uint32_t*)&_descriptor) = 0xFFFFFFFF;
     _descriptor = descriptor;
-    _descriptor->rbs1 = BUFFER_SIZE;
-    _descriptor->rbs2 = 0;
-    _descriptor->buffer1_addr = _buffer.buffer();
+    _descriptor->rdes1 |= BUFFER_SIZE;
+    _descriptor->rdes2 = (uint32_t)_buffer.buffer();
     reset_owner();
   };
 
-  void reset_owner() { _descriptor->own = 1; };
+  void reset_owner() { _descriptor->rdes0 |= RX_DES0_OWN; };
   void zero() { _buffer.zero(); };
   Buffer<BUFFER_SIZE>& buffer() { return _buffer; };
 
@@ -52,13 +52,12 @@ class TXDescriptor {
 public:
   void setup_descriptor(ENetTXDesc* descriptor) {
     _descriptor = descriptor;
-    _descriptor->tbs1 = BUFFER_SIZE;
-    _descriptor->tbs2 = 0;
-    _descriptor->buffer1_addr = _buffer.buffer();
+    _descriptor->tdes1 |= BUFFER_SIZE;
+    _descriptor->tdes2 = (uint32_t)_buffer.buffer();
     reset_owner();
   };
 
-  void reset_owner() { _descriptor->own = 1; };
+  void reset_owner() { _descriptor->tdes0 &= ~(TX_DES0_OWN); };
   void zero() { _buffer.zero(); };
   Buffer<BUFFER_SIZE>& buffer() { return _buffer; };
 
@@ -76,12 +75,12 @@ public:
       _rx[index].setup_descriptor(&_rx_descriptors[index]);
       _tx[index].setup_descriptor(&_tx_descriptors[index]);
     }
-    _rx_descriptors[BUFFER_COUNT - 1].rer = 1;
-    _tx_descriptors[BUFFER_COUNT - 1].ter = 1;
+    _rx_descriptors[BUFFER_COUNT - 1].rdes1 |= RX_DES1_RER;
+    _tx_descriptors[BUFFER_COUNT - 1].tdes0 |= TX_DES0_TER;
   };
 
   void install() {
-    EMAC_DMABUSMOD |= BIT_7;  // Set descriptor length to 8 bytes
+    EMAC_DMABUSMOD |= BIT_17 | BIT_8 | BIT_7 ;  // Set descriptor length to 8 bytes
     EMAC_RXDLADDR = (uint32_t)&_rx_descriptors;
     EMAC_TXDLADDR = (uint32_t)&_tx_descriptors;
   };
@@ -96,6 +95,10 @@ public:
       _rx[index].reset_owner();
       _tx[index].reset_owner();
     }
+  }
+
+  uint32_t desc_count() const {
+    return BUFFER_COUNT;
   }
 
 private:
