@@ -43,6 +43,7 @@ cc_binary(
     "-specs=nano.specs",
     "-specs=nosys.specs",
     "-lm",
+    "-lsupc++",
   ],
 )
 
