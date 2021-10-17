@@ -18,11 +18,11 @@ public:
   void disable();
 
   Phy& get_phy() { return _phy; };
-  dma::DescriptorMgr<20>& get_desc() { return _desc_mgr; };
+  dma::DescriptorMgr<10>& get_desc() { return _desc_mgr; };
 
 private:
   Phy _phy;
-  dma::DescriptorMgr<20> _desc_mgr;
+  dma::DescriptorMgr<10> _desc_mgr;
 };
 
 

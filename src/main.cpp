@@ -1,28 +1,32 @@
 #include "utils.h"
 #include "status_led.h"
 #include "color.h"
-#include "ethernet/mac.h"
-#include "registers/uart.h"
-#include "registers/emac.h"
+#include "ethernet/driver.h"
 #include "registers/sysctl.h"
+#include "registers/gpio.h"
+#include "registers/uart.h"
+#include "logging.h"
+#include "timing.h"
+#include "uart.h"
 
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
-ethernet::Mac mac_mgr;
+#include "lwip/init.h"
+
+ethernet::Driver enet_driver;
+UART uart0(UART0_BASE, 115200);
 
 void EthernetMac_ISR(void) {
-  mac_mgr.get_desc().disown_all();
-  if(EMAC_DMARIS & (BIT_6 | BIT_14)) {
-    UART0_DR = '.';
-    EMAC_DMARIS |= BIT_6 | BIT_14;
-  }
+  enet_driver.interrupt_handler();
+  log_d("ENET ISR");
 }
 
 int main(void){
   uint32_t rx_desc_size = sizeof(ENetRXDesc);
   uint32_t reset_reason = SYSCTL_RESC;
+
   // ============== Crystal Init =======================
   // Set the crytsal range to high and clear the power down bit
   SYSCTL_MOSCCTL  |=   0x00000010;
@@ -60,25 +64,26 @@ int main(void){
 
 
   // ============== Setup UART ===========================
-  // Enable UART Clock and associated GPIO port
+  // Enable UART and associated GPIO port
   PORT_A_AFSEL   = 0x000000FF;
   PORT_A_PCTL    = 0x00000011;
   PORT_A_DEN     = 0x000000FF;
 
   // Setup UART
-  UART0_CTL       = 0x00000000;
-  UART0_IBRD      = 0x00000041;
-  UART0_FBRD      = 0x00000007;
-  UART0_LCRH      = 0x00000070;
-  UART0_CC        = 0x00000000;
-  UART0_CTL       = 0x00000301;
-
+  uart0.init();
+  logging_init(&uart0);
+  logging_set_log_level(LogLevel::debug);
+  log_i("Hello World!");
 
   // ============== Setup EMAC / PHY =====================
-  mac_mgr.init();
+  enet_driver.init();
 
   // =============== Setup Peripherals  =======================
   init_status_led();
+
+  // ============== Enable SysTick ======================
+  systick_init();
+
 
   // Enable interrupts
   CORE_EN0 = 0xFFFFFFFF;
@@ -88,7 +93,8 @@ int main(void){
   GIE()
 
   // Enable the MAC
-  mac_mgr.enable();
+  enet_driver.start_tx();
+  enet_driver.start_rx();
 
   // Flash some LEDs to make it known we are alive
   set_status_led(1, 0, 0);
@@ -118,6 +124,9 @@ int main(void){
   UART1_LCRH      = 0x00000078;
   UART1_CC        = 0x00000000;
   UART1_CTL       = 0x00000301;
+
+  // Enable LWIP
+  lwip_init();
 
   // Enable RS485 TX and remote power enable line
   PORT_D_DATA     = BIT_2 | BIT_6;

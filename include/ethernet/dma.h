@@ -16,6 +16,13 @@ template <size_t BUFFER_SIZE>
 class Buffer {
 public:
   Buffer() { zero(); };
+  Buffer(Buffer<BUFFER_SIZE> const& other) {
+    memcpy(_buffer, other._buffer, BUFFER_SIZE);
+  }
+  Buffer<BUFFER_SIZE>& operator=(Buffer<BUFFER_SIZE> const& rhs) {
+    memcpy(_buffer, rhs._buffer, BUFFER_SIZE);
+    return *this;
+  }
 
   constexpr size_t size() { return BUFFER_SIZE; }
   uint8_t* buffer() { return _buffer; };
@@ -37,6 +44,7 @@ public:
     reset_owner();
   };
 
+  bool is_owned() { return !(_descriptor->rdes0 & RX_DES0_OWN); };
   void reset_owner() { _descriptor->rdes0 |= RX_DES0_OWN; };
   void zero() { _buffer.zero(); };
   Buffer<BUFFER_SIZE>& buffer() { return _buffer; };
@@ -57,7 +65,8 @@ public:
     reset_owner();
   };
 
-  void reset_owner() { _descriptor->tdes0 &= ~(TX_DES0_OWN); };
+  bool is_owned() { return !(_descriptor->tdes0 & TX_DES0_OWN); }
+  void reset_owner() { _descriptor->tdes0 |= TX_DES0_OWN; };
   void zero() { _buffer.zero(); };
   Buffer<BUFFER_SIZE>& buffer() { return _buffer; };
 
@@ -67,7 +76,7 @@ private:
 };
 
 /// @brief Manages a list of descriptors and the associated registers in the ENet DMA
-template <int BUFFER_COUNT = 10, size_t BUFFER_SIZE = 2000>
+template <int BUFFER_COUNT = 10, size_t BUFFER_SIZE = 1600>
 class DescriptorMgr {
 public:
   DescriptorMgr() {
@@ -100,6 +109,9 @@ public:
   uint32_t desc_count() const {
     return BUFFER_COUNT;
   }
+
+  std::array<RXDescriptor<BUFFER_SIZE>, BUFFER_COUNT>& rx_desc() { return _rx; };
+  std::array<TXDescriptor<BUFFER_SIZE>, BUFFER_COUNT>& tx_desc() { return _tx; };
 
 private:
   ALIGNED ENetRXDesc _rx_descriptors[BUFFER_COUNT];

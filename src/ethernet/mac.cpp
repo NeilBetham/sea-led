@@ -51,9 +51,6 @@ void Mac::init() {
 
   // Put the DMA into store and forward mode
   EMAC_DMAOPMODE |= BIT_21 | BIT_25;
-
-  // Enable DMA RX / TX
-  EMAC_DMAOPMODE |= BIT_1 | BIT_13;
 }
 
 void Mac::enable() {

@@ -21,3 +21,12 @@ http_archive(
 )
 load("@bazel_arm_none//:deps.bzl", "toolchain_deps")
 toolchain_deps()
+
+# LWIP for networking stack
+http_archive(
+  name = "lwip",
+  url = "http://download.savannah.nongnu.org/releases/lwip/lwip-2.1.2.zip",
+  sha256 = "5e0ae1887bef5b27e35f92636a3e52f3bc67f1944f136d6c79d18e5d972f76b0",
+  strip_prefix = "lwip-2.1.2",
+  build_file = "@//deps/lwip:lwip.BUILD",
+)

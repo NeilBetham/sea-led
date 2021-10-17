@@ -93,6 +93,3 @@ void Reset_Handler(void) {
   while(1);
 }
 
-void exit() {
-  while(1) {}
-}
