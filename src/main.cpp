@@ -13,14 +13,41 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "lwip/api.h"
+#include "lwip/netif.h"
 #include "lwip/init.h"
+#include "lwip/pbuf.h"
+#include "lwip/etharp.h"
+#include "lwip/dhcp.h"
+#include "lwip/timeouts.h"
 
 ethernet::Driver enet_driver;
 UART uart0(UART0_BASE, 115200);
 
 void EthernetMac_ISR(void) {
   enet_driver.interrupt_handler();
-  log_d("ENET ISR");
+}
+
+err_t enetif_ouput(struct netif* netif, struct pbuf* packet) {
+  log_i("Packet trasnmit requested");
+  return ERR_OK;
+}
+
+err_t enetif_init(struct netif* netif) {
+  uint8_t mac_addr[6] = { 0x11, 0x11, 0x11, 0x11, 0x11, 0x11 };
+  netif->linkoutput = enetif_ouput;
+  netif->output     = etharp_output;
+  netif->mtu        = 1500;
+  netif->flags      = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_ETHERNET | NETIF_FLAG_IGMP | NETIF_FLAG_MLD6;
+
+  SMEMCPY(netif->hwaddr, mac_addr, 6);
+  netif->hwaddr_len = 6;
+
+  return ERR_OK;
+}
+
+void enetif_status_callback(struct netif* netif) {
+  log_i("netif status callback");
 }
 
 int main(void){
@@ -73,7 +100,7 @@ int main(void){
   uart0.init();
   logging_init(&uart0);
   logging_set_log_level(LogLevel::debug);
-  log_i("Hello World!");
+  log_i("Hello World! - {}", 2);
 
   // ============== Setup EMAC / PHY =====================
   enet_driver.init();
@@ -98,13 +125,13 @@ int main(void){
 
   // Flash some LEDs to make it known we are alive
   set_status_led(1, 0, 0);
-  sleep(10000000);
+  sleep(1000);
   set_status_led(0, 1, 0);
-  sleep(10000000);
+  sleep(1000);
   set_status_led(0, 0, 1);
-  sleep(10000000);
+  sleep(1000);
   set_status_led(1, 1, 1);
-  sleep(10000000);
+  sleep(1000);
   set_status_led(0, 0, 0);
 
   // Enable GPIOB GPIOD and UART1
@@ -125,9 +152,24 @@ int main(void){
   UART1_CC        = 0x00000000;
   UART1_CTL       = 0x00000301;
 
-  // Enable LWIP
+  // ======================== LWIP ========================
+  // Interface init
+  struct netif ethernet_if;
   lwip_init();
+  netif_add(&ethernet_if, IP4_ADDR_ANY, IP4_ADDR_ANY, IP4_ADDR_ANY, NULL, enetif_init, netif_input);
+  ethernet_if.name[0] = 'e';
+  ethernet_if.name[1] = '0';
+  netif_set_status_callback(&ethernet_if, enetif_status_callback);
+  netif_set_default(&ethernet_if);
+  netif_set_up(&ethernet_if);
 
+  // DHCP start
+  dhcp_start(&ethernet_if);
+
+	// Set the link state to up
+	netif_set_link_up(&ethernet_if);
+
+  // =================== LED Control ===================
   // Enable RS485 TX and remote power enable line
   PORT_D_DATA     = BIT_2 | BIT_6;
   uint8_t slot_cycle_counter = 0;
@@ -147,6 +189,26 @@ int main(void){
   float blue = 0.0f;
 
   while(1) {
+    auto& rx_queue = enet_driver.rx_queue();
+    while(rx_queue.can_pop()) {
+      // Pop a queued packet
+      auto buffer = rx_queue.pop();
+
+      // Feed new frames to LWIP
+		  struct pbuf* p = pbuf_alloc(PBUF_RAW, buffer.size(), PBUF_POOL);
+      if(p != NULL) {
+        pbuf_take(p, buffer.buffer(), buffer.size());
+        if(ethernet_if.input(p, &ethernet_if) != ERR_OK) {
+          pbuf_free(p);
+        }
+      }
+    }
+
+    // Do the periodic timeout checks
+    sys_check_timeouts();
+
+    sleep(10);
+/*
     // Setup the data buffer for this cycle
     memset(data_buffer, 0, sizeof(data_buffer));
 
@@ -177,5 +239,6 @@ int main(void){
     }
 
     sleep(560000);
+*/
   }
 }

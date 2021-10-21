@@ -25,7 +25,7 @@ public:
   bool can_pop() { return size() > 0; }
 
   T pop() {
-    auto element =  _buffer[_tail];
+    T element = _buffer[_tail];
     if(_tail + 1 >= BUFFER_SIZE){
       _tail = 0;
     } else {

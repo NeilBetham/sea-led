@@ -13,6 +13,7 @@ cc_library(
     "-mfloat-abi=softfp",
     "-specs=nano.specs",
     "-specs=nosys.specs",
+    "-std=c++11",
   ],
   visibility = ["//visibility:public"],
 )
@@ -24,6 +25,8 @@ cc_library(
   strip_include_prefix = "include/",
   deps = [
     "@lwip//:lwip-lib",
+    ":sys-timing",
+    "@fmt//:fmt",
   ],
   copts = [
     "-ggdb",
@@ -33,6 +36,7 @@ cc_library(
     "-mfloat-abi=softfp",
     "-specs=nano.specs",
     "-specs=nosys.specs",
+    "-std=c++11",
   ],
 )
 
@@ -54,6 +58,7 @@ cc_binary(
     "-mfloat-abi=softfp",
     "-specs=nano.specs",
     "-specs=nosys.specs",
+    "-std=c++11",
   ],
   linkopts = [
     "-T $(location :ld/TM4C129ENCZAD.ld)",
@@ -64,6 +69,7 @@ cc_binary(
     "-specs=nosys.specs",
     "-lm",
     "-lsupc++",
+    "-lstdc++",
   ],
 )
 

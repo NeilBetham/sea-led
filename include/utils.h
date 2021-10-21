@@ -21,6 +21,4 @@ static inline void reset() {
   CORE_APINT |=   0x5FA00004;
 }
 
-static inline void sleep(uint32_t cycle_count) {
-  for(uint32_t index = 0; index < cycle_count; index++) {}
-}
+void sleep(uint32_t milliseconds);

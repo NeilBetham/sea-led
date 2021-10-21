@@ -29,6 +29,8 @@ public:
   void interrupt_handler();
   void tick();
 
+  CircularBuffer<dma::Buffer<1600>, 10>& rx_queue() { return _rx_queue; };
+
 private:
   Mac _mac;
 

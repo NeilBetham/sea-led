@@ -115,6 +115,8 @@ void Driver::handle_rx() {
     // Copy the DMA buffer to local queue for processing
     // TODO: zerocopy buffering, prolly need some type of pool for this.
     if(_rx_queue.can_push()) {
+      log_d("RX Packet Length: {}", desc.frame_length());
+      desc.buffer().set_size(desc.frame_length());
       _rx_queue.push(desc.buffer());
     }
 
