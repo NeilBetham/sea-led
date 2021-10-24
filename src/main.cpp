@@ -29,7 +29,18 @@ void EthernetMac_ISR(void) {
 }
 
 err_t enetif_ouput(struct netif* netif, struct pbuf* packet) {
-  log_i("Packet trasnmit requested");
+  log_i("Sending packet of length: {}", packet->tot_len);
+  ethernet::dma::Buffer<1600> buf;
+  struct pbuf* buf_ptr = packet;
+  uint32_t bytes_copied = 0;
+
+  while(buf_ptr != NULL) {
+    memcpy(buf.buffer(), packet->payload, packet->len);
+    bytes_copied += packet->len;
+    buf_ptr = buf_ptr->next;
+  }
+
+  enet_driver.queue_frame(buf.buffer(), bytes_copied);
   return ERR_OK;
 }
 
@@ -100,7 +111,7 @@ int main(void){
   uart0.init();
   logging_init(&uart0);
   logging_set_log_level(LogLevel::debug);
-  log_i("Hello World! - {}", 2);
+  log_i("Hello World!");
 
   // ============== Setup EMAC / PHY =====================
   enet_driver.init();
@@ -163,11 +174,14 @@ int main(void){
   netif_set_default(&ethernet_if);
   netif_set_up(&ethernet_if);
 
-  // DHCP start
-  dhcp_start(&ethernet_if);
-
 	// Set the link state to up
 	netif_set_link_up(&ethernet_if);
+
+  // DHCP start
+  err_t ret = dhcp_start(&ethernet_if);
+  if(ret == ERR_MEM) {
+    log_e("Failed to start dhcp");
+  }
 
   // =================== LED Control ===================
   // Enable RS485 TX and remote power enable line
@@ -203,6 +217,9 @@ int main(void){
         }
       }
     }
+
+    // Run driver tick
+    enet_driver.tick();
 
     // Do the periodic timeout checks
     sys_check_timeouts();

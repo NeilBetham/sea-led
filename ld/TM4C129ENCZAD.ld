@@ -25,6 +25,12 @@ SECTIONS {
     __exidx_end = .;
   } > FLASH
 
+  .ARM.extab : {
+    __extab_start = .;
+    *(.ARM.extab* .gnu.linkonce.armextab.*)
+    __extab_end = .;
+  } > FLASH
+
   /* CPP CTor and DTor code sections */
   .preinit_array ALIGN(4) : {
     __preinit_array_start__ = .;

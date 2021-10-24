@@ -94,10 +94,10 @@
 #define MEMP_NUM_PBUF           16
 /* MEMP_NUM_RAW_PCB: the number of UDP protocol control blocks. One
  *    per active RAW "connection". */
-#define MEMP_NUM_RAW_PCB        1
+#define MEMP_NUM_RAW_PCB        10
 /* MEMP_NUM_UDP_PCB: the number of UDP protocol control blocks. One
  *    per active UDP "connection". */
-#define MEMP_NUM_UDP_PCB        1
+#define MEMP_NUM_UDP_PCB        10
 /* MEMP_NUM_TCP_PCB: the number of simulatenously active TCP
  *    connections. */
 #define MEMP_NUM_TCP_PCB        10
@@ -204,7 +204,7 @@
 /* ---------- DHCP options ---------- */
 /* Define LWIP_DHCP to 1 if you want DHCP configuration of
  *    interfaces. */
-#define LWIP_DHCP               LWIP_UDP
+#define LWIP_DHCP               1
 
 /* 1 if you want to do an ARP check on the offered address
  *    (recommended). */

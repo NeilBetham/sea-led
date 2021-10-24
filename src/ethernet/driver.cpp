@@ -42,12 +42,13 @@ void Driver::interrupt_handler() {
     if(EMAC_DMARIS & BIT_0) {
       // Transmit
       EMAC_DMARIS |= BIT_0;
-      handle_tx();
+      log_i("TX Compelete");
     }
 
     if(EMAC_DMARIS & BIT_2) {
       // TX Buff Unavailable
       EMAC_DMARIS |= BIT_2;
+      log_i("TX Buff Unvail");
     }
 
     if(EMAC_DMARIS & BIT_14) {
@@ -60,6 +61,7 @@ void Driver::interrupt_handler() {
     if(EMAC_DMARIS & BIT_1) {
       // TX Stopped
       EMAC_DMARIS |= BIT_1;
+      log_e("TX Stopped");
     }
 
     if(EMAC_DMARIS & BIT_3) {
@@ -75,6 +77,7 @@ void Driver::interrupt_handler() {
     if(EMAC_DMARIS & BIT_5) {
       // TX Underflow
       EMAC_DMARIS |= BIT_5;
+      log_e("TX Underflow");
     }
 
     if(EMAC_DMARIS & BIT_7) {
@@ -106,6 +109,21 @@ void Driver::interrupt_handler() {
   }
 }
 
+void Driver::tick() {
+//  handle_rx();
+  handle_tx();
+}
+
+bool Driver::queue_frame(const uint8_t* data, uint32_t count) {
+  dma::Buffer<1600> buffer;
+  memcpy(buffer.buffer(), data, count);
+  buffer.set_size(count);
+
+  if(!_tx_queue.can_push()) { return false; }
+  _tx_queue.push(buffer);
+  return true;
+}
+
 void Driver::handle_rx() {
   // Iterate through the RX descriptors to see which have data.
   for(auto& desc : _mac.get_desc().rx_desc()) {
@@ -127,7 +145,27 @@ void Driver::handle_rx() {
 }
 
 void Driver::handle_tx() {
+  if(!_tx_queue.can_pop()) { return; }
 
+  uint32_t used_desc = 0;
+  bool should_start = false;
+
+  if(!_tx_queue.can_pop()) { return; }
+
+  // Load queued messages into TX DMA buffers
+  auto& tx_desc = _mac.get_desc().curr_tx_desc();
+  auto tx_buf = _tx_queue.pop();
+  memcpy(tx_desc.buffer().buffer(), tx_buf.buffer(), tx_buf.size());
+  tx_desc.set_frame_length(tx_buf.size());
+  tx_desc.prep_for_tx();
+  tx_desc.reset_owner();
+
+  log_d("Starting TX DMA");
+  tx_dma_poll();
+}
+
+void Driver::tx_dma_poll() {
+  EMAC_TXPOLLD = 0xDEADBEEF;
 }
 
 

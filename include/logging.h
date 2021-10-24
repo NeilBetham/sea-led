@@ -27,8 +27,8 @@ template <typename ... Ts>
 std::string format_args(Ts ... args) {
   try {
     return fmt::format(args...);
-  } catch(...) {
-    return "FUCKING SHIT";
+  } catch(const std::exception& e) {
+    return e.what();
   }
 }
 
