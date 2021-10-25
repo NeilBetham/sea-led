@@ -1,3 +1,4 @@
+#include "buffer.h"
 #include "utils.h"
 #include "status_led.h"
 #include "color.h"
@@ -21,44 +22,11 @@
 #include "lwip/dhcp.h"
 #include "lwip/timeouts.h"
 
-ethernet::Driver enet_driver;
+ethernet::Driver<1600, 10> enet_driver;
 UART uart0(UART0_BASE, 115200);
 
 void EthernetMac_ISR(void) {
   enet_driver.interrupt_handler();
-}
-
-err_t enetif_ouput(struct netif* netif, struct pbuf* packet) {
-  log_i("Sending packet of length: {}", packet->tot_len);
-  ethernet::dma::Buffer<1600> buf;
-  struct pbuf* buf_ptr = packet;
-  uint32_t bytes_copied = 0;
-
-  while(buf_ptr != NULL) {
-    memcpy(buf.buffer(), packet->payload, packet->len);
-    bytes_copied += packet->len;
-    buf_ptr = buf_ptr->next;
-  }
-
-  enet_driver.queue_frame(buf.buffer(), bytes_copied);
-  return ERR_OK;
-}
-
-err_t enetif_init(struct netif* netif) {
-  uint8_t mac_addr[6] = { 0x11, 0x11, 0x11, 0x11, 0x11, 0x11 };
-  netif->linkoutput = enetif_ouput;
-  netif->output     = etharp_output;
-  netif->mtu        = 1500;
-  netif->flags      = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_ETHERNET | NETIF_FLAG_IGMP | NETIF_FLAG_MLD6;
-
-  SMEMCPY(netif->hwaddr, mac_addr, 6);
-  netif->hwaddr_len = 6;
-
-  return ERR_OK;
-}
-
-void enetif_status_callback(struct netif* netif) {
-  log_i("netif status callback");
 }
 
 int main(void){
@@ -163,22 +131,8 @@ int main(void){
   UART1_CC        = 0x00000000;
   UART1_CTL       = 0x00000301;
 
-  // ======================== LWIP ========================
-  // Interface init
-  struct netif ethernet_if;
-  lwip_init();
-  netif_add(&ethernet_if, IP4_ADDR_ANY, IP4_ADDR_ANY, IP4_ADDR_ANY, NULL, enetif_init, netif_input);
-  ethernet_if.name[0] = 'e';
-  ethernet_if.name[1] = '0';
-  netif_set_status_callback(&ethernet_if, enetif_status_callback);
-  netif_set_default(&ethernet_if);
-  netif_set_up(&ethernet_if);
-
-	// Set the link state to up
-	netif_set_link_up(&ethernet_if);
-
   // DHCP start
-  err_t ret = dhcp_start(&ethernet_if);
+  err_t ret = dhcp_start(&enet_driver.netif());
   if(ret == ERR_MEM) {
     log_e("Failed to start dhcp");
   }
@@ -203,26 +157,8 @@ int main(void){
   float blue = 0.0f;
 
   while(1) {
-    auto& rx_queue = enet_driver.rx_queue();
-    while(rx_queue.can_pop()) {
-      // Pop a queued packet
-      auto buffer = rx_queue.pop();
-
-      // Feed new frames to LWIP
-		  struct pbuf* p = pbuf_alloc(PBUF_RAW, buffer.size(), PBUF_POOL);
-      if(p != NULL) {
-        pbuf_take(p, buffer.buffer(), buffer.size());
-        if(ethernet_if.input(p, &ethernet_if) != ERR_OK) {
-          pbuf_free(p);
-        }
-      }
-    }
-
     // Run driver tick
     enet_driver.tick();
-
-    // Do the periodic timeout checks
-    sys_check_timeouts();
 
     sleep(10);
 /*

@@ -5,9 +5,9 @@
 
 namespace ethernet {
 
-
-void Mac::init() {
-  // PHY needs to be inited first
+template <uint32_t DESC_COUNT>
+void Mac<DESC_COUNT>::init() {
+  // PHY needs to be inited first other wise shit will get fucked up
   _phy.init();
 
   // Enable clock to the MAC
@@ -42,7 +42,7 @@ void Mac::init() {
   // Configure some of the MAC params
   EMAC_ADDR0L    = 0x5379E738;
   EMAC_ADDR0H    = 0x0000B281;
-  EMAC_FRAMEFLTR = 0x00000010;
+  EMAC_FRAMEFLTR = 0x00000000;
   EMAC_CFG       = 0x30000400;
 
   // Configure MAC based on link type
@@ -53,11 +53,13 @@ void Mac::init() {
   EMAC_DMAOPMODE |= BIT_21 | BIT_25;
 }
 
-void Mac::enable() {
+template <uint32_t DESC_COUNT>
+void Mac<DESC_COUNT>::enable() {
   EMAC_CFG |= BIT_2 | BIT_3;
 }
 
-void Mac::disable() {
+template <uint32_t DESC_COUNT>
+void Mac<DESC_COUNT>::disable() {
   EMAC_CFG &= ~(BIT_2 | BIT_3);
 }
 

@@ -10,6 +10,7 @@
 namespace ethernet {
 
 
+template <uint32_t DESC_COUNT>
 class Mac {
 public:
   void init();
@@ -18,12 +19,14 @@ public:
   void disable();
 
   Phy& get_phy() { return _phy; };
-  dma::DescriptorMgr<10>& get_desc() { return _desc_mgr; };
+  dma::DescriptorMgr<DESC_COUNT>& get_desc() { return _desc_mgr; };
 
 private:
   Phy _phy;
-  dma::DescriptorMgr<10> _desc_mgr;
+  dma::DescriptorMgr<DESC_COUNT> _desc_mgr;
 };
 
 
 } // namespace ethernet
+
+#include "impl/ethernet/mac_impl.h"

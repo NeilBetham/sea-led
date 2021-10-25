@@ -4,16 +4,23 @@
 
 #pragma once
 
+#include "buffer.h"
 #include "circular_buffer.h"
 #include "ethernet/ethernet_defs.h"
 #include "ethernet/mac.h"
+
+#include "lwip/netif.h"
 
 #include <functional>
 
 namespace ethernet {
 
+
+template <uint32_t BUF_SIZE, uint32_t BUF_COUNT>
 class Driver {
 public:
+  using driver_t = Driver<BUF_SIZE, BUF_COUNT>;
+
   Driver() {};
   ~Driver() {};
 
@@ -29,21 +36,37 @@ public:
   void interrupt_handler();
   void tick();
 
-  CircularBuffer<dma::Buffer<1600>, 10>& rx_queue() { return _rx_queue; };
+  CircularBuffer<Buffer<BUF_SIZE>, BUF_COUNT>& rx_queue() { return _rx_queue; }
 
   bool queue_frame(const uint8_t* data, uint32_t count);
 
+  struct netif& netif() { return _eth_netif; }
+
+  // Netif Callbacks
+  err_t netif_init(struct netif* netif);
+  void netif_status_cb(struct netif* netif);
+  err_t netif_output(struct netif* netif, struct pbuf* packet);
+
 private:
-  Mac _mac;
+  Mac<BUF_COUNT> _mac;
+
+  struct netif _eth_netif;
 
   void handle_rx();
+  void deliver_rx();
   void handle_tx();
 
   void tx_dma_poll();
 
-  CircularBuffer<dma::Buffer<1600>, 10> _rx_queue;
-  CircularBuffer<dma::Buffer<1600>, 10> _tx_queue;
+  void enetif_stat_cb(struct netif* netif) {
+
+  }
+
+  CircularBuffer<Buffer<BUF_SIZE>, BUF_COUNT> _rx_queue;
+  CircularBuffer<Buffer<BUF_SIZE>, BUF_COUNT> _tx_queue;
 };
 
 
 } // namespace ethernet
+
+#include "impl/ethernet/driver_impl.h"
