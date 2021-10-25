@@ -18,12 +18,18 @@ public:
   void enable();
   void disable();
 
+  void set_mac(const uint8_t mac_addr[6]);
+  void get_mac(uint8_t mac_addr[6]);
+
+  void tick();
+
   Phy& get_phy() { return _phy; };
   dma::DescriptorMgr<DESC_COUNT>& get_desc() { return _desc_mgr; };
 
 private:
   Phy _phy;
   dma::DescriptorMgr<DESC_COUNT> _desc_mgr;
+  LinkState _curr_link_state = LinkState::unknown;
 };
 
 

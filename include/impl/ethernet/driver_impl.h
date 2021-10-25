@@ -87,13 +87,13 @@ void Driver<BUF_SIZE, BUF_COUNT>::interrupt_handler() {
     if(EMAC_DMARIS & BIT_0) {
       // Transmit
       EMAC_DMARIS |= BIT_0;
-      log_i("TX Compelete");
+      log_d("TX Compelete");
     }
 
     if(EMAC_DMARIS & BIT_2) {
       // TX Buff Unavailable
       EMAC_DMARIS |= BIT_2;
-      log_i("TX Buff Unvail");
+      log_d("TX Buff Unvail");
     }
 
     if(EMAC_DMARIS & BIT_14) {
@@ -156,6 +156,18 @@ void Driver<BUF_SIZE, BUF_COUNT>::interrupt_handler() {
 
 template <uint32_t BUF_SIZE, uint32_t BUF_COUNT>
 void Driver<BUF_SIZE, BUF_COUNT>::tick() {
+  _mac.tick();
+
+  if(_mac.get_phy().get_link_state() == LinkState::up && _curr_link_state != LinkState::up) {
+    log_i("E0 Link Up");
+    netif_set_link_up(&_eth_netif);
+    _curr_link_state = LinkState::up;
+  } else if (_mac.get_phy().get_link_state() == LinkState::down && _curr_link_state != LinkState::down) {
+    log_i("E0 Link Down");
+    netif_set_link_down(&_eth_netif);
+    _curr_link_state = LinkState::down;
+  }
+
   deliver_rx();
   handle_tx();
   sys_check_timeouts();
@@ -175,7 +187,8 @@ bool Driver<BUF_SIZE, BUF_COUNT>::queue_frame(const uint8_t* data, uint32_t coun
 
 template <uint32_t BUF_SIZE, uint32_t BUF_COUNT>
 err_t Driver<BUF_SIZE, BUF_COUNT>::netif_init(struct netif* netif) {
-  uint8_t mac_addr[6] = {0x39, 0xe7, 0x79, 0x53, 0x81, 0xb2};
+  uint8_t mac_addr[6] = {0};
+  _mac.get_mac(mac_addr);
   netif->linkoutput = enetif_output<driver_t>;
   netif->output     = etharp_output;
   netif->mtu        = 1500;

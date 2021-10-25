@@ -58,12 +58,12 @@ private:
 
   void tx_dma_poll();
 
-  void enetif_stat_cb(struct netif* netif) {
-
-  }
+  void enetif_stat_cb(struct netif* netif) {}
 
   CircularBuffer<Buffer<BUF_SIZE>, BUF_COUNT> _rx_queue;
   CircularBuffer<Buffer<BUF_SIZE>, BUF_COUNT> _tx_queue;
+
+  LinkState _curr_link_state = LinkState::unknown;
 };
 
 

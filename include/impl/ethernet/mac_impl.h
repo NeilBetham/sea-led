@@ -44,13 +44,6 @@ void Mac<DESC_COUNT>::init() {
   EMAC_ADDR0H    = 0x0000B281;
   EMAC_FRAMEFLTR = 0x00000000;
   EMAC_CFG       = 0x30000400;
-
-  // Configure MAC based on link type
-  _phy.wait_for_link();
-  EMAC_CFG |= _phy.get_mac_config();
-
-  // Put the DMA into store and forward mode
-  EMAC_DMAOPMODE |= BIT_21 | BIT_25;
 }
 
 template <uint32_t DESC_COUNT>
@@ -61,6 +54,52 @@ void Mac<DESC_COUNT>::enable() {
 template <uint32_t DESC_COUNT>
 void Mac<DESC_COUNT>::disable() {
   EMAC_CFG &= ~(BIT_2 | BIT_3);
+}
+
+
+template <uint32_t DESC_COUNT>
+void Mac<DESC_COUNT>::set_mac(const uint8_t* mac_addr) {
+  uint32_t addr_low = 0;
+  uint32_t addr_high = 0;
+
+  addr_high |= mac_addr[0] << 8;
+  addr_high |= mac_addr[1];
+  addr_low  |= mac_addr[2] << 24;
+  addr_low  |= mac_addr[3] << 16;
+  addr_low  |= mac_addr[4] << 8;
+  addr_low  |= mac_addr[5];
+
+  EMAC_ADDR0H = addr_high;
+  EMAC_ADDR0L = addr_low;
+}
+
+template <uint32_t DESC_COUNT>
+void Mac<DESC_COUNT>::get_mac(uint8_t* mac_addr) {
+  mac_addr[5] = (EMAC_ADDR0H & 0x0000FF00) >> 8;
+  mac_addr[4] = EMAC_ADDR0H & 0x000000FF;
+
+  mac_addr[3] = (EMAC_ADDR0L & 0xFF000000) >> 24;
+  mac_addr[2] = (EMAC_ADDR0L & 0x00FF0000) >> 16;
+  mac_addr[1] = (EMAC_ADDR0L & 0x0000FF00) >> 8;
+  mac_addr[0] = EMAC_ADDR0L & 0x000000FF;
+}
+
+template <uint32_t DESC_COUNT>
+void Mac<DESC_COUNT>::tick() {
+  if(_phy.get_link_state() == LinkState::up && _curr_link_state != LinkState::up) {
+    log_d("MAC link up");
+    // Link is up configure the phy
+    uint32_t cfg = EMAC_CFG;
+    cfg &= ~(BIT_11 | BIT_14);
+    EMAC_CFG = cfg |  _phy.get_mac_config();
+    EMAC_DMAOPMODE |= BIT_21 | BIT_25;
+    _curr_link_state = LinkState::up;
+  } else if(_phy.get_link_state() == LinkState::down && _curr_link_state != LinkState::down) {
+    log_d("MAC link down");
+    // Link is down disable DMA
+    EMAC_DMAOPMODE &= ~(BIT_21 | BIT_25);
+    _curr_link_state = LinkState::down;
+  }
 }
 
 

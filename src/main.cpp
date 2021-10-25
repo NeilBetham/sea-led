@@ -30,9 +30,6 @@ void EthernetMac_ISR(void) {
 }
 
 int main(void){
-  uint32_t rx_desc_size = sizeof(ENetRXDesc);
-  uint32_t reset_reason = SYSCTL_RESC;
-
   // ============== Crystal Init =======================
   // Set the crytsal range to high and clear the power down bit
   SYSCTL_MOSCCTL  |=   0x00000010;
