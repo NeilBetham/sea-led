@@ -21,8 +21,9 @@
 #include "lwip/etharp.h"
 #include "lwip/dhcp.h"
 #include "lwip/timeouts.h"
+#include "lwip/tcp.h"
 
-ethernet::Driver<1600, 10> enet_driver;
+ethernet::Driver<1550, 10> enet_driver;
 UART uart0(UART0_BASE, 115200);
 
 void EthernetMac_ISR(void) {
@@ -95,10 +96,6 @@ int main(void){
   CORE_EN3 = 0xFFFFFFFF;
   GIE()
 
-  // Enable the MAC
-  enet_driver.start_tx();
-  enet_driver.start_rx();
-
   // Flash some LEDs to make it known we are alive
   set_status_led(1, 0, 0);
   sleep(1000);
@@ -152,6 +149,11 @@ int main(void){
   float red = 0.0f;
   float green = 0.0f;
   float blue = 0.0f;
+
+  struct tcp_pcb* echo_server = tcp_new();
+  if(echo_server == NULL) {
+    log_e("Failed to create echo server");
+  }
 
   while(1) {
     // Run driver tick

@@ -36,10 +36,6 @@ public:
   void interrupt_handler();
   void tick();
 
-  CircularBuffer<Buffer<BUF_SIZE>, BUF_COUNT>& rx_queue() { return _rx_queue; }
-
-  bool queue_frame(const uint8_t* data, uint32_t count);
-
   struct netif& netif() { return _eth_netif; }
 
   // Netif Callbacks
@@ -48,7 +44,7 @@ public:
   err_t netif_output(struct netif* netif, struct pbuf* packet);
 
 private:
-  Mac<BUF_COUNT> _mac;
+  Mac<BUF_SIZE, BUF_COUNT> _mac;
 
   struct netif _eth_netif;
 
@@ -59,6 +55,8 @@ private:
   void tx_dma_poll();
 
   void enetif_stat_cb(struct netif* netif) {}
+
+  bool queue_frame(const uint8_t* data, uint32_t count);
 
   CircularBuffer<Buffer<BUF_SIZE>, BUF_COUNT> _rx_queue;
   CircularBuffer<Buffer<BUF_SIZE>, BUF_COUNT> _tx_queue;

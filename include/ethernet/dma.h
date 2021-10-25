@@ -75,7 +75,7 @@ private:
 };
 
 /// @brief Manages a list of descriptors and the associated registers in the ENet DMA
-template <int BUFFER_COUNT = 10, size_t BUFFER_SIZE = 1600>
+template <uint32_t BUFFER_SIZE, uint32_t BUFFER_COUNT>
 class DescriptorMgr {
 public:
   DescriptorMgr() {

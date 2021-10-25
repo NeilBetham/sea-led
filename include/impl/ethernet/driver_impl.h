@@ -160,10 +160,14 @@ void Driver<BUF_SIZE, BUF_COUNT>::tick() {
 
   if(_mac.get_phy().get_link_state() == LinkState::up && _curr_link_state != LinkState::up) {
     log_i("E0 Link Up");
+    start_rx();
+    start_tx();
     netif_set_link_up(&_eth_netif);
     _curr_link_state = LinkState::up;
   } else if (_mac.get_phy().get_link_state() == LinkState::down && _curr_link_state != LinkState::down) {
     log_i("E0 Link Down");
+    stop_tx();
+    stop_rx();
     netif_set_link_down(&_eth_netif);
     _curr_link_state = LinkState::down;
   }
@@ -175,7 +179,7 @@ void Driver<BUF_SIZE, BUF_COUNT>::tick() {
 
 template <uint32_t BUF_SIZE, uint32_t BUF_COUNT>
 bool Driver<BUF_SIZE, BUF_COUNT>::queue_frame(const uint8_t* data, uint32_t count) {
-  Buffer<1600> buffer;
+  Buffer<BUF_SIZE> buffer;
   memcpy(buffer.buffer(), data, count);
   buffer.set_size(count);
 

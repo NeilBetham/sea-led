@@ -10,7 +10,7 @@
 namespace ethernet {
 
 
-template <uint32_t DESC_COUNT>
+template <uint32_t BUF_SIZE, uint32_t BUF_COUNT>
 class Mac {
 public:
   void init();
@@ -24,11 +24,11 @@ public:
   void tick();
 
   Phy& get_phy() { return _phy; };
-  dma::DescriptorMgr<DESC_COUNT>& get_desc() { return _desc_mgr; };
+  dma::DescriptorMgr<BUF_SIZE, BUF_COUNT>& get_desc() { return _desc_mgr; };
 
 private:
   Phy _phy;
-  dma::DescriptorMgr<DESC_COUNT> _desc_mgr;
+  dma::DescriptorMgr<BUF_SIZE, BUF_COUNT> _desc_mgr;
   LinkState _curr_link_state = LinkState::unknown;
 };
 

@@ -5,8 +5,8 @@
 
 namespace ethernet {
 
-template <uint32_t DESC_COUNT>
-void Mac<DESC_COUNT>::init() {
+template <uint32_t BUF_SIZE, uint32_t BUF_COUNT>
+void Mac<BUF_SIZE, BUF_COUNT>::init() {
   // PHY needs to be inited first other wise shit will get fucked up
   _phy.init();
 
@@ -46,19 +46,19 @@ void Mac<DESC_COUNT>::init() {
   EMAC_CFG       = 0x30000400;
 }
 
-template <uint32_t DESC_COUNT>
-void Mac<DESC_COUNT>::enable() {
+template <uint32_t BUF_SIZE, uint32_t BUF_COUNT>
+void Mac<BUF_SIZE, BUF_COUNT>::enable() {
   EMAC_CFG |= BIT_2 | BIT_3;
 }
 
-template <uint32_t DESC_COUNT>
-void Mac<DESC_COUNT>::disable() {
+template <uint32_t BUF_SIZE, uint32_t BUF_COUNT>
+void Mac<BUF_SIZE, BUF_COUNT>::disable() {
   EMAC_CFG &= ~(BIT_2 | BIT_3);
 }
 
 
-template <uint32_t DESC_COUNT>
-void Mac<DESC_COUNT>::set_mac(const uint8_t* mac_addr) {
+template <uint32_t BUF_SIZE, uint32_t BUF_COUNT>
+void Mac<BUF_SIZE, BUF_COUNT>::set_mac(const uint8_t* mac_addr) {
   uint32_t addr_low = 0;
   uint32_t addr_high = 0;
 
@@ -73,8 +73,8 @@ void Mac<DESC_COUNT>::set_mac(const uint8_t* mac_addr) {
   EMAC_ADDR0L = addr_low;
 }
 
-template <uint32_t DESC_COUNT>
-void Mac<DESC_COUNT>::get_mac(uint8_t* mac_addr) {
+template <uint32_t BUF_SIZE, uint32_t BUF_COUNT>
+void Mac<BUF_SIZE, BUF_COUNT>::get_mac(uint8_t* mac_addr) {
   mac_addr[5] = (EMAC_ADDR0H & 0x0000FF00) >> 8;
   mac_addr[4] = EMAC_ADDR0H & 0x000000FF;
 
@@ -84,8 +84,8 @@ void Mac<DESC_COUNT>::get_mac(uint8_t* mac_addr) {
   mac_addr[0] = EMAC_ADDR0L & 0x000000FF;
 }
 
-template <uint32_t DESC_COUNT>
-void Mac<DESC_COUNT>::tick() {
+template <uint32_t BUF_SIZE, uint32_t BUF_COUNT>
+void Mac<BUF_SIZE, BUF_COUNT>::tick() {
   if(_phy.get_link_state() == LinkState::up && _curr_link_state != LinkState::up) {
     log_d("MAC link up");
     // Link is up configure the phy
