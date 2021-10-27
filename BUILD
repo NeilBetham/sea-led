@@ -27,6 +27,7 @@ cc_library(
     "@lwip//:lwip-lib",
     ":sys-timing",
     "@fmt//:fmt",
+    "@picohttp//:picohttp"
   ],
   copts = [
     "-ggdb",

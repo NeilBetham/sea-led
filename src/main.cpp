@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <vector>
 
 #include "lwip/api.h"
 #include "lwip/netif.h"
@@ -29,6 +30,24 @@ UART uart0(UART0_BASE, 115200);
 void EthernetMac_ISR(void) {
   enet_driver.interrupt_handler();
 }
+
+template <typename T>
+err_t eth_tcp_recv(void* state, struct tcp_pcb* conn, struct pbuf* data, err_t err) {
+  log_d("Connection received data: {}", data->tot_len);
+  tcp_write(conn, data->payload, data->len, TCP_WRITE_FLAG_COPY);
+
+  return ERR_OK;
+}
+
+template <typename T>
+err_t eth_tcp_accept(void* state, struct tcp_pcb* conn, err_t error) {
+  log_d("Connection received");
+  tcp_recv(conn, eth_tcp_recv<T>);
+  ((T*)state)->push_back(conn);
+
+  return ERR_OK;
+}
+
 
 int main(void){
   // ============== Crystal Init =======================
@@ -79,11 +98,14 @@ int main(void){
   logging_set_log_level(LogLevel::debug);
   log_i("Hello World!");
 
+
   // ============== Setup EMAC / PHY =====================
   enet_driver.init();
 
+
   // =============== Setup Peripherals  =======================
   init_status_led();
+
 
   // ============== Enable SysTick ======================
   systick_init();
@@ -150,10 +172,32 @@ int main(void){
   float green = 0.0f;
   float blue = 0.0f;
 
+  // Active connection list
+  std::vector<struct tcp_pcb*> connections;
+  connections.reserve(10);
+
+  // Create the TCP buffer
   struct tcp_pcb* echo_server = tcp_new();
   if(echo_server == NULL) {
     log_e("Failed to create echo server");
   }
+
+  // Bind the tcp buffer to port 23
+  if(tcp_bind(echo_server, IP_ANY_TYPE, 4023) != ERR_OK) {
+    log_e("Failed to bind tcp socket");
+  }
+
+  // Set the pcb arg
+  tcp_arg(echo_server, (void*)&connections);
+
+  // Set listen mode
+  echo_server = tcp_listen_with_backlog(echo_server, 10);
+  if(echo_server == NULL) {
+    log_e("Listen failed");
+  }
+
+  // Set the accept conn callback
+  tcp_accept(echo_server, eth_tcp_accept<std::vector<struct tcp_pcb*>>);
 
   while(1) {
     // Run driver tick

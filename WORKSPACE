@@ -39,3 +39,14 @@ http_archive(
   strip_prefix = "fmt-8.0.1",
   build_file = "@//deps/fmt:fmt.BUILD",
 )
+
+# Picohttpparser for http request parsing
+http_archive(
+  name = "picohttp",
+  url = "https://github.com/h2o/picohttpparser/archive/657ede0fdf49b806e48c85f128cc55fe8905ed6b.tar.gz",
+  sha256 = "869abb24ae5d84456e6a9da982d075ee65ec1328b5d8c5103ba4410c50bbc6a0",
+  strip_prefix = "picohttpparser-657ede0fdf49b806e48c85f128cc55fe8905ed6b",
+  build_file = "@//deps/picohttp:picohttp.BUILD",
+)
+
+
