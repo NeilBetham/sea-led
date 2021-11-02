@@ -10,7 +10,8 @@
 #include "timing.h"
 #include "uart.h"
 #include "socket.h"
-#include "echo_server.h"
+#include "httpd.h"
+#include "app.h"
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -149,8 +150,11 @@ int main(void){
   float green = 0.0f;
   float blue = 0.0f;
 
-  EchoServer echo_server(23);
-  echo_server.start();
+  HTTPD http_server(80);
+  App app;
+  http_server.set_delegate(&app);
+
+  http_server.start();
 
   while(1) {
     // Run driver tick
