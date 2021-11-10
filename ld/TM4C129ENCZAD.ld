@@ -19,18 +19,20 @@ SECTIONS {
   } > FLASH
 
   /* ARM Exception handling code */
+/*
   .ARM.exidx : {
     __exidx_start = .;
     *(.ARM.exidx* .gnu.linkonce.armexidx.*)
     __exidx_end = .;
   } > FLASH
-
+*/
+/*
   .ARM.extab : {
     __extab_start = .;
     *(.ARM.extab* .gnu.linkonce.armextab.*)
     __extab_end = .;
   } > FLASH
-
+*/
   /* CPP CTor and DTor code sections */
   .preinit_array ALIGN(4) : {
     __preinit_array_start__ = .;

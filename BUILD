@@ -11,9 +11,10 @@ cc_library(
     "-mcpu=cortex-m4",
     "-mfpu=fpv4-sp-d16",
     "-mfloat-abi=softfp",
-#    "-specs=nano.specs",
+    "-specs=nano.specs",
     "-specs=nosys.specs",
     "-std=c++11",
+    "-fno-exceptions",
   ],
   visibility = ["//visibility:public"],
 )
@@ -35,9 +36,10 @@ cc_library(
     "-mcpu=cortex-m4",
     "-mfpu=fpv4-sp-d16",
     "-mfloat-abi=softfp",
-#    "-specs=nano.specs",
+    "-specs=nano.specs",
     "-specs=nosys.specs",
     "-std=c++11",
+    "-fno-exceptions",
   ],
 )
 
@@ -57,20 +59,22 @@ cc_binary(
     "-mcpu=cortex-m4",
     "-mfpu=fpv4-sp-d16",
     "-mfloat-abi=softfp",
-#    "-specs=nano.specs",
+    "-specs=nano.specs",
     "-specs=nosys.specs",
     "-std=c++11",
+    "-fno-exceptions",
   ],
   linkopts = [
     "-T $(location :ld/TM4C129ENCZAD.ld)",
     "-e Reset_Handler",
     "-mthumb",
     "-mcpu=cortex-m4",
-#    "-specs=nano.specs",
+    "-specs=nano.specs",
     "-specs=nosys.specs",
     "-lm",
     "-lsupc++",
     "-lstdc++",
+    "-fno-exceptions",
   ],
 )
 

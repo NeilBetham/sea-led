@@ -9,7 +9,7 @@
 #include "socket.h"
 
 #include <stdint.h>
-#include <vector>
+#include <list>
 
 class HTTPD : public SocketDelegate {
 public:
@@ -28,7 +28,7 @@ public:
 private:
   uint32_t _port = 0;
   Socket _listen_socket;
-  std::vector<Socket*> _active_connections;
+  std::list<Socket*> _active_connections;
 
   HTTPDDelegate* _delegate = NULL;
 };

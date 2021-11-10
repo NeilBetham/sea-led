@@ -21,4 +21,9 @@ static inline void reset() {
   CORE_APINT |=   0x5FA00004;
 }
 
+// Systick based sleep
 void sleep(uint32_t milliseconds);
+void sleep_int();
+
+// GPTM based sleep
+void usleep(uint32_t microseconds);

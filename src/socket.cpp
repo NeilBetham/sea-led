@@ -41,7 +41,6 @@ template <typename T>
 err_t tcp_acc(void* arg, struct tcp_pcb* conn, err_t error) {
   if(error != ERR_OK) {
     log_e("Socket Accept Error: {}", error);
-    tcp_abort(conn);
     return ERR_OK;
   }
   ((T*)(arg))->accept(conn);
@@ -53,6 +52,12 @@ template <typename T>
 void tcp_err(void* arg, err_t error) {
   log_e("Socket Error: {}", error);
   ((T*)(arg))->error(error);
+}
+
+template <typename T>
+err_t tcp_tx(void* arg, struct tcp_pcb* conn, uint16_t len) {
+  ((T*)(arg))->sent(len);
+  return ERR_OK;
 }
 
 
@@ -85,10 +90,20 @@ bool Socket::listen(uint32_t port) {
   return true;
 }
 
+void Socket::shutdown() {
+  _close_after_send = true;
+}
+
 void Socket::read(std::string& data) {
   if(_delegate == NULL) { return; }
   _delegate->handle_rx(this, data);
 }
+
+void Socket::sent(uint16_t sent_len) {
+  if(sent_len > 0 && _close_after_send) {
+    close();
+  }
+};
 
 uint32_t Socket::write(const uint8_t* buffer, uint32_t size) {
   if(_mode == SocketMode::listen) { return 0; }
@@ -118,7 +133,20 @@ Socket::Socket(struct tcp_pcb* conn, uint32_t port) {
   _state = SocketState::connected;
   tcp_arg(conn, this);
   tcp_recv(conn, tcp_rx<Socket>);
+  tcp_sent(conn, tcp_tx<Socket>);
   tcp_err(conn, tcp_err<Socket>);
 }
 
+void Socket::close() {
+  if(_mode == SocketMode::connection && _state == SocketState::connected) {
+    tcp_shutdown(_tcp_handle, 1, 1);
+    _state = SocketState::disconnected;
+    if(_delegate != NULL) {
+      _delegate->handle_closed(this);
+    }
+  }
+}
 
+void Socket::flush() {
+  tcp_output(_tcp_handle);
+}

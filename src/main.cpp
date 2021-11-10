@@ -12,6 +12,8 @@
 #include "socket.h"
 #include "httpd.h"
 #include "app.h"
+#include "light_controller.h"
+#include "dmx.h"
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -22,9 +24,11 @@
 
 ethernet::Driver<1550, 10> enet_driver;
 UART uart0(UART0_BASE, 115200);
+LightController light_controller;
 
 void EthernetMac_ISR(void) {
   enet_driver.interrupt_handler();
+  sleep_int();
 }
 
 int main(void){
@@ -73,7 +77,7 @@ int main(void){
   // Setup UART
   uart0.init();
   logging_init(&uart0);
-  logging_set_log_level(LogLevel::debug);
+  logging_set_log_level(LogLevel::info);
   log_i("Hello World!");
 
 
@@ -107,91 +111,44 @@ int main(void){
   sleep(1000);
   set_status_led(0, 0, 0);
 
-  // Enable GPIOB GPIOD and UART1
-  PORT_B_AFSEL   = 0x00000002;
-  PORT_B_PCTL    = 0x00000010;
-  PORT_B_DIR     = 0x00000002;
-  PORT_B_DEN     = 0x00000002;
-
-  PORT_D_DIR     = BIT_2 | BIT_6;
-  PORT_D_AFSEL   = 0x00000000;
-  PORT_D_DEN     = 0x000000FF;
-
-  // Setup UART
-  UART1_CTL       = 0x00000000;
-  UART1_IBRD      = 0x0000001E;
-  UART1_FBRD      = 0x00000020;
-  UART1_LCRH      = 0x00000078;
-  UART1_CC        = 0x00000000;
-  UART1_CTL       = 0x00000301;
-
   // DHCP start
   err_t ret = dhcp_start(&enet_driver.netif());
   if(ret == ERR_MEM) {
     log_e("Failed to start dhcp");
   }
 
-  // =================== LED Control ===================
-  // Enable RS485 TX and remote power enable line
-  PORT_D_DATA     = BIT_2 | BIT_6;
-  uint8_t slot_cycle_counter = 0;
-  uint8_t slot_index_counter = 0;
-  uint8_t data_buffer[11] = {0x00};
-
-  set_status_led(0, 1, 0);
-
-  // HSL State
-  float hue = 0.0f;
-  float saturation = 1.0f;
-  float lightness = 1.0f;
-
-  // RGB State
-  float red = 0.0f;
-  float green = 0.0f;
-  float blue = 0.0f;
-
+	// Setup all the application components
   HTTPD http_server(80);
   App app;
+	DMX dmx;
+	dmx.init(50);
   http_server.set_delegate(&app);
-
+  app.set_delegate(&light_controller);
   http_server.start();
 
+	uint32_t loop_start_time = 0;
+	constexpr uint32_t LOOP_TIME_MS = 50;
+
   while(1) {
-    // Run driver tick
+		loop_start_time = sys_now();
+
+		// Get the current color and configure DMX with it
+		light_controller.get_colors(loop_start_time, &dmx.color());
+
+		// See if the DMX driver has shit to do
+		dmx.tick();
+
+    // See if the ethernet driver has shit to do
     enet_driver.tick();
 
-    sleep(10);
-/*
-    // Setup the data buffer for this cycle
-    memset(data_buffer, 0, sizeof(data_buffer));
+    // Find out how long it took to execute the loop
+    uint32_t exec_time = sys_now() - loop_start_time;
+		uint32_t sleep_time = (LOOP_TIME_MS - exec_time);
 
-    // Convert the current HSL to RGB
-    hsl_to_rgb(hue, saturation, lightness, &red, &green, &blue);
-    data_buffer[1] = (uint8_t)(((float)UINT8_MAX) * red);
-    data_buffer[2] = (uint8_t)(((float)UINT8_MAX) * green);
-    data_buffer[3] = (uint8_t)(((float)UINT8_MAX) * blue);
-    hue += 0.05;
-    if(hue > 360.0f) {
-      hue = 0.0f;
-    }
-
-    // Send the break word
-    PORT_B_AFSEL  = 0x00000000;
-    PORT_B_DATA   = 0x00000000;
-    sleep(1965);
-
-    // Send the mark word
-    PORT_B_DATA   = 0x00000002;
-    sleep(380);
-    PORT_B_AFSEL  = 0x00000002;
-
-    // Send the data bytes
-    for(uint8_t index = 0; index < 11; index++) {
-      UART1_DR = data_buffer[index];
-      while(UART1_FR & BIT_5) {};  // Wait for fifo to have space
-    }
-
-    sleep(560000);
-*/
+    if(sleep_time > 0 && sleep_time <= LOOP_TIME_MS) {
+      sleep(sleep_time);
+    } else {
+			log_w("Main loop exceeded exec time of {}ms: {}ms", LOOP_TIME_MS, exec_time);
+		}
   }
 }

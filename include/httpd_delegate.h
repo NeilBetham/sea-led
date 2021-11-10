@@ -4,13 +4,14 @@
 
 #pragma once
 
+#include "socket.h"
+
 #include <stdint.h>
 
 #include "picohttpparser.h"
 
 static constexpr uint32_t MAX_HEADERS = 100;
 
-class Socket;
 
 struct HTTPRequest {
   const char* method;

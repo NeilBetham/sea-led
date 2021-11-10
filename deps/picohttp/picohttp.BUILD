@@ -9,7 +9,7 @@ cc_library(
     "-mcpu=cortex-m4",
     "-mfpu=fpv4-sp-d16",
     "-mfloat-abi=softfp",
-#    "-specs=nano.specs",
+    "-specs=nano.specs",
     "-specs=nosys.specs",
   ],
   visibility = ["//visibility:public"],

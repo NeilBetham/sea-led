@@ -210,7 +210,7 @@ void Driver<BUF_SIZE, BUF_COUNT>::netif_status_cb(struct netif* netif) {
 
 template <uint32_t BUF_SIZE, uint32_t BUF_COUNT>
 err_t Driver<BUF_SIZE, BUF_COUNT>::netif_output(struct netif* netif, struct pbuf* packet) {
-  log_i("Sending packet of length: {}", packet->tot_len);
+  log_d("Sending packet of length: {}", packet->tot_len);
   Buffer<BUF_SIZE> buf;
   struct pbuf* buf_ptr = packet;
   uint32_t bytes_copied = 0;
