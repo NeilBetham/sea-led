@@ -66,7 +66,6 @@ cc_binary(
   ],
   linkopts = [
     "-T $(location :ld/TM4C129ENCZAD.ld)",
-    "-e Reset_Handler",
     "-mthumb",
     "-mcpu=cortex-m4",
     "-specs=nano.specs",

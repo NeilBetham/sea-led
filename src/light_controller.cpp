@@ -3,22 +3,27 @@
 #include <limits.h>
 
 uint32_t lerp_color(uint32_t color1, uint32_t color2, uint32_t q15_percentage) {
-  uint32_t red1 = (color1 & 0xFF000000) >> 8;
-  uint32_t green1 = (color1 & 0x00FF0000);
-  uint32_t blue1 = (color1 & 0x0000FF00) << 8;
-  uint32_t alpha1 = (color1 & 0x000000FF) << 16;
+  int32_t red1 = (color1 & 0xFF000000) >> 24;
+  int32_t green1 = (color1 & 0x00FF0000) >> 16;
+  int32_t blue1 = (color1 & 0x0000FF00) >> 8;
+  int32_t alpha1 = (color1 & 0x000000FF);
 
-  uint32_t red2 = (color2 & 0xFF000000) >> 8;
-  uint32_t green2 = (color2 & 0x00FF0000);
-  uint32_t blue2 = (color2 & 0x0000FF00) << 8;
-  uint32_t alpha2 = (color2 & 0x000000FF) << 16;
+  int32_t red2 = (color2 & 0xFF000000) >> 24;
+  int32_t green2 = (color2 & 0x00FF0000) >> 16;
+  int32_t blue2 = (color2 & 0x0000FF00) >> 8;
+  int32_t alpha2 = (color2 & 0x000000FF);
 
-  uint32_t red_lerp = ((((red2 - red1) / q15_percentage) << 16) + red1);
-  uint32_t green_lerp = ((((green2 - green1) / q15_percentage) << 16) + green1);
-  uint32_t blue_lerp = ((((blue2 - blue1) / q15_percentage) << 16) + blue1);
-  uint32_t alpha_lerp = ((((alpha2 - alpha1) / q15_percentage) << 16) + alpha1);
+  int32_t red_lerp = 0;
+  int32_t green_lerp = 0;
+  int32_t blue_lerp = 0;
+  int32_t alpha_lerp = 0;
 
-  uint32_t ret = (red_lerp << 8) | (green_lerp) | (blue_lerp >> 8) | (alpha_lerp >> 16);
+  red_lerp = ((((red2 - red1) * q15_percentage) >> 15) + red1);
+  green_lerp = ((((green2 - green1) * q15_percentage) >> 15) + green1);
+  blue_lerp = ((((blue2 - blue1) * q15_percentage) >> 15) + blue1);
+  alpha_lerp = ((((alpha2 - alpha1) * q15_percentage) >> 15) + alpha1);
+
+  uint32_t ret = (red_lerp << 24) | (green_lerp << 16) | (blue_lerp << 8) | (alpha_lerp);
   return ret;
 }
 
@@ -31,6 +36,19 @@ uint32_t le_swizzle(uint32_t value) {
   return ret;
 }
 
+uint32_t intensity_scaling(uint32_t color, uint8_t scaler) {
+  uint32_t red = (color & 0xFF000000) >> 24;
+  uint32_t green = (color & 0x00FF0000) >> 16;
+  uint32_t blue = (color & 0x0000FF00) >> 8;
+  uint32_t alpha = (color & 0x000000FF);
+
+  uint32_t scaled_red = (red * scaler) >> 8;
+  uint32_t scaled_green = (green * scaler) >> 8;
+  uint32_t scaled_blue = (blue * scaler) >> 8;
+  uint32_t scaled_alpha = (alpha * scaler) >> 8;
+
+  return ((scaled_red & 0xFF) << 24) | ((scaled_green & 0xFF) << 16) | ((scaled_blue & 0xFF) << 8) | (scaled_alpha & 0xFF);
+}
 
 // Longest cycle time
 constexpr uint32_t MAX_CYCLE_TIME_MS = 255000;
@@ -62,15 +80,15 @@ void LightController::get_colors(uint32_t time, uint32_t* color) {
       *color = 0;
       break;
     case ColorMode::single:
-      *color = le_swizzle(_color1);
+      *color = le_swizzle(intensity_scaling(_color1, _intensity));
       break;
     case ColorMode::fade:
       // Handle Fade
-      *color = le_swizzle(calc_fade(time));
+      *color = le_swizzle(intensity_scaling(calc_fade(time), _intensity));
       break;
     case ColorMode::jump:
       // Handle Jump
-      *color = le_swizzle(calc_jump(time));
+      *color = le_swizzle(intensity_scaling(calc_jump(time), _intensity));
       break;
     default:
       *color = 0;
@@ -89,18 +107,18 @@ uint32_t LightController::calc_fade(uint32_t time) {
 
   // Second get the phase we are in so we know which colors to blend
   uint32_t phase = cycle_time / (CYCLE_TIME_QUARTER / _speed);
-  uint32_t lerp_phase_q16 = ((cycle_time % (CYCLE_TIME_QUARTER / _speed)) << 16) / (CYCLE_TIME_QUARTER / _speed);
+  uint32_t lerp_phase_q15 = ((cycle_time % (CYCLE_TIME_QUARTER / _speed)) << 15) / (CYCLE_TIME_QUARTER / _speed);
   if(phase == 0) {
-    return lerp_color(_color1, _color2, lerp_phase_q16);
+    return lerp_color(_color1, _color2, lerp_phase_q15);
   } else if(phase == 1) {
-    return lerp_color(_color2, _color3, lerp_phase_q16);
+    return lerp_color(_color2, _color3, lerp_phase_q15);
   } else if(phase == 2) {
-    return lerp_color(_color3, _color4, lerp_phase_q16);
+    return lerp_color(_color3, _color4, lerp_phase_q15);
   } else if(phase == 3) {
-    return lerp_color(_color4, _color1, lerp_phase_q16);
+    return lerp_color(_color4, _color1, lerp_phase_q15);
   } else if(phase >= 4) {
     _cycle_start_dt = time;
-    return lerp_color(_color1, _color2, lerp_phase_q16);
+    return lerp_color(_color1, _color2, lerp_phase_q15);
   }
 
   return 0;

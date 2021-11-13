@@ -2,7 +2,6 @@ MEMORY {
   /* These are specific to the TM4C129 Being used with this project */
   FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 1024K
   RAM (rwx) : ORIGIN = 0x20000000, LENGTH = 256K
-
 }
 
 SECTIONS {
@@ -18,21 +17,6 @@ SECTIONS {
     *(.rodata*)             /* constants go here */
   } > FLASH
 
-  /* ARM Exception handling code */
-/*
-  .ARM.exidx : {
-    __exidx_start = .;
-    *(.ARM.exidx* .gnu.linkonce.armexidx.*)
-    __exidx_end = .;
-  } > FLASH
-*/
-/*
-  .ARM.extab : {
-    __extab_start = .;
-    *(.ARM.extab* .gnu.linkonce.armextab.*)
-    __extab_end = .;
-  } > FLASH
-*/
   /* CPP CTor and DTor code sections */
   .preinit_array ALIGN(4) : {
     __preinit_array_start__ = .;

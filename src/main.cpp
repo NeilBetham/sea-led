@@ -25,10 +25,17 @@
 ethernet::Driver<1550, 10> enet_driver;
 UART uart0(UART0_BASE, 115200);
 LightController light_controller;
+volatile bool test_mode_enabled = false;
+volatile bool test_mode_next_state = false;
 
 void EthernetMac_ISR(void) {
   enet_driver.interrupt_handler();
   sleep_int();
+}
+
+void GPIOPortD_ISR() {
+  PORT_D_ICR |= BIT_0;
+  test_mode_next_state = !test_mode_enabled;
 }
 
 int main(void){
@@ -92,6 +99,14 @@ int main(void){
   // ============== Enable SysTick ======================
   systick_init();
 
+  // Enable the test mode button
+  PORT_D_AFSEL &= ~(BIT_0);
+  PORT_D_DEN   |= BIT_0;
+  PORT_D_DIR   &= ~(BIT_0);
+  PORT_D_IS    &= ~(BIT_0);
+  PORT_D_IBE   &= ~(BIT_0);
+  PORT_D_IEV   &= ~(BIT_0);
+  PORT_D_IM    |= BIT_0;
 
   // Enable interrupts
   CORE_EN0 = 0xFFFFFFFF;
@@ -101,13 +116,13 @@ int main(void){
   GIE()
 
   // Flash some LEDs to make it known we are alive
-  set_status_led(1, 0, 0);
+  set_status_led(0xFF, 0, 0);
   sleep(1000);
-  set_status_led(0, 1, 0);
+  set_status_led(0, 0xFF, 0);
   sleep(1000);
-  set_status_led(0, 0, 1);
+  set_status_led(0, 0, 0xFF);
   sleep(1000);
-  set_status_led(1, 1, 1);
+  set_status_led(0xFF, 0xFF, 0xFF);
   sleep(1000);
   set_status_led(0, 0, 0);
 
@@ -127,13 +142,33 @@ int main(void){
   http_server.start();
 
 	uint32_t loop_start_time = 0;
-	constexpr uint32_t LOOP_TIME_MS = 50;
+	constexpr uint32_t LOOP_TIME_MS = 25;
 
   while(1) {
 		loop_start_time = sys_now();
 
+    uint32_t color = 0;
+
+    // Check if test mode has been requested
+    if((test_mode_next_state != test_mode_enabled) && (test_mode_next_state == true)) {
+      log_i("Test mode enabled");
+      light_controller.handle_command_update(0xFF000000, 0xFFFF0000, 0x00FF0000, 0x0000FF00, 0xFF, 0x55, ColorMode::jump);
+      test_mode_enabled = test_mode_next_state;
+    } else if((test_mode_next_state != test_mode_enabled) && (test_mode_next_state == false)) {
+      log_i("Test mode disabled");
+      light_controller.handle_command_update(0xFF000000, 0xFFFF0000, 0x00FF0000, 0x0000FF00, 0xFF, 0x55, ColorMode::off);
+      test_mode_enabled = test_mode_next_state;
+    }
+
 		// Get the current color and configure DMX with it
-		light_controller.get_colors(loop_start_time, &dmx.color());
+		light_controller.get_colors(loop_start_time, &color);
+    dmx.color() = color;
+
+    // Mirror the current color on the status LED
+    uint8_t red = color & 0x000000FF;
+    uint8_t green = (color & 0x0000FF00) >> 8;
+    uint8_t blue = (color & 0x00FF0000) >> 16;
+    set_status_led(red, green, blue);
 
 		// See if the DMX driver has shit to do
 		dmx.tick();
