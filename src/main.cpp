@@ -1,10 +1,9 @@
-#include "buffer.h"
 #include "utils.h"
 #include "status_led.h"
-#include "color.h"
 #include "ethernet/driver.h"
 #include "registers/sysctl.h"
 #include "registers/gpio.h"
+#include "registers/wdt.h"
 #include "registers/uart.h"
 #include "logging.h"
 #include "timing.h"
@@ -38,7 +37,7 @@ void GPIOPortD_ISR() {
   test_mode_next_state = !test_mode_enabled;
 }
 
-int main(void){
+int main(void) {
   // ============== Crystal Init =======================
   // Set the crytsal range to high and clear the power down bit
   SYSCTL_MOSCCTL  |=   0x00000010;
@@ -175,6 +174,9 @@ int main(void){
 
     // See if the ethernet driver has shit to do
     enet_driver.tick();
+
+    // Pet the WDT
+    WDT0_ICR = 1;
 
     // Find out how long it took to execute the loop
     uint32_t exec_time = sys_now() - loop_start_time;

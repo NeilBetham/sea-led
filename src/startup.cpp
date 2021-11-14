@@ -1,4 +1,6 @@
 #include "registers/core.h"
+#include "registers/wdt.h"
+#include "registers/sysctl.h"
 
 extern int main(void);
 
@@ -73,6 +75,14 @@ void system_setup() {
 
   // Enable the floating point co-processor
   CORE_CPAC |= 0x00F00000;
+
+  // Start WDT
+  volatile uint32_t* wdt_ctl = &WDT0_CTL;
+  SYSCTL_RCGCWD |= BIT_0;
+  for(uint32_t index = 0; index < 1000; index++);
+  WDT0_LOAD = 1200000000;  // Ten seconds at max sys clock
+  for(uint32_t index = 0; index < 1000; index++);
+  WDT0_CTL |= BIT_1;  // Enabled the WDT to reset the system
 }
 
 // Do all relevant early system init here
