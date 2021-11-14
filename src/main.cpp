@@ -5,6 +5,7 @@
 #include "registers/gpio.h"
 #include "registers/wdt.h"
 #include "registers/uart.h"
+#include "registers/adc.h"
 #include "logging.h"
 #include "timing.h"
 #include "uart.h"
@@ -26,6 +27,7 @@ UART uart0(UART0_BASE, 115200);
 LightController light_controller;
 volatile bool test_mode_enabled = false;
 volatile bool test_mode_next_state = false;
+volatile uint32_t internal_temp = 0;  // This sucks but I don't feel like writing a ADC driver for it ATM
 
 void EthernetMac_ISR(void) {
   enet_driver.interrupt_handler();
@@ -35,6 +37,17 @@ void EthernetMac_ISR(void) {
 void GPIOPortD_ISR() {
   PORT_D_ICR |= BIT_0;
   test_mode_next_state = !test_mode_enabled;
+}
+
+void ADC0Sequence0_ISR() {
+  // Pull the result from the FIFO
+  uint32_t result = ADC_0_SSFIFO0;
+
+  // Convert the result in to C
+  internal_temp = (0x00937FFF - ((((75 * 0x00035555) >> 16) * result) << 4)) >> 16;
+
+  // Clear the interrupt
+  ADC_0_ISC |= BIT_0;
 }
 
 int main(void) {
@@ -107,6 +120,18 @@ int main(void) {
   PORT_D_IEV   &= ~(BIT_0);
   PORT_D_IM    |= BIT_0;
 
+  // Enable the ADC to read the temp sensor
+  SYSCTL_RCGCADC |= BIT_0;
+  ADC_0_ACTSS    =  0;
+  ADC_0_EMUX     |= 0x0000EEE0;
+  ADC_0_SSEMUX0  =  0;
+  ADC_0_SSMUX0   =  0;
+  ADC_0_SSCTL0   |= BIT_1 | BIT_2 | BIT_3;
+  ADC_0_SSTSH0   |= 0x8;
+  ADC_0_IM       |= BIT_0 | BIT_8;
+  ADC_0_ACTSS    |= BIT_0;;
+
+
   // Enable interrupts
   CORE_EN0 = 0xFFFFFFFF;
   CORE_EN1 = 0xFFFFFFFF;
@@ -174,6 +199,9 @@ int main(void) {
 
     // See if the ethernet driver has shit to do
     enet_driver.tick();
+
+    // Trigger a temp sensor reading
+    ADC_0_PSSI |= BIT_0;
 
     // Pet the WDT
     WDT0_ICR = 1;
