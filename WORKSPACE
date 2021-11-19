@@ -15,9 +15,9 @@ rules_foreign_cc_dependencies()
 # Bazel Toolchain for ARM embedded
 http_archive(
   name = "bazel_arm_none",
-  url = "https://github.com/NeilBetham/bazel-arm-none/archive/a215c4955e1f22ab1856165828d6e82669c7c39e.tar.gz",
-  sha256 = "c8538681f31ad22f5fe9e5ec017a16ea3cc3847672efa4dfeb9b93b4cf91742d",
-  strip_prefix = "bazel-arm-none-a215c4955e1f22ab1856165828d6e82669c7c39e",
+  url = "https://github.com/NeilBetham/bazel-arm-none/archive/858d8e0c6b060c456d96fe067a6d1b622c429872.tar.gz",
+  sha256 = "28b18c1ec140fba42c036e8c7ba94dcdf06e3a4428726bf5fa3b6436b457c553",
+  strip_prefix = "bazel-arm-none-858d8e0c6b060c456d96fe067a6d1b622c429872",
 )
 #local_repository(
 #  name = "bazel_arm_none",
