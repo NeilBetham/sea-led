@@ -216,8 +216,8 @@ err_t Driver<BUF_SIZE, BUF_COUNT>::netif_output(struct netif* netif, struct pbuf
   uint32_t bytes_copied = 0;
 
   while(buf_ptr != NULL) {
-    memcpy(buf.buffer(), packet->payload, packet->len);
-    bytes_copied += packet->len;
+    memcpy(buf.buffer() + bytes_copied, buf_ptr->payload, buf_ptr->len);
+    bytes_copied += buf_ptr->len;
     buf_ptr = buf_ptr->next;
   }
 

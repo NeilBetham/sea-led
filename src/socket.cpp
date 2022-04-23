@@ -32,6 +32,7 @@ err_t tcp_rx(void* arg, struct tcp_pcb* conn, struct pbuf* data, err_t error) {
 
   auto buffered_data = to_string(data);
   pbuf_free(data);
+  tcp_recved(conn, buffered_data.size());
   ((T*)(arg))->read(buffered_data);
   log_d("Socket RX: {}", buffered_data.size());
   return ERR_OK;
