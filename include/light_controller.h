@@ -22,12 +22,12 @@ public:
 
 
 private:
-  uint32_t _color1 = 0;
-  uint32_t _color2 = 0;
-  uint32_t _color3 = 0;
-  uint32_t _color4 = 0;
-  uint8_t _intensity = 0;
-  uint8_t _speed = 0;
+  uint32_t _color1 = 0xFF000000;
+  uint32_t _color2 = 0x00FF0000;
+  uint32_t _color3 = 0x0000FF00;
+  uint32_t _color4 = 0xFFFF0000;
+  uint8_t _intensity = 0xFF;
+  uint8_t _speed = 0x11;
   ColorMode _mode = ColorMode::off;
 
   // State for color changing modes

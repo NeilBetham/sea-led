@@ -96,7 +96,7 @@ int main(void) {
   // Setup UART
   uart0.init();
   logging_init(&uart0);
-  logging_set_log_level(LogLevel::info);
+  logging_set_log_level(LogLevel::warn);
   log_i("Hello World!");
 
 

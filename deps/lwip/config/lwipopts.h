@@ -86,7 +86,7 @@
 
 /* MEM_SIZE: the size of the heap memory. If the application will send
  * a lot of data that needs to be copied, this should be set high. */
-#define MEM_SIZE               10240
+#define MEM_SIZE               (20 * 1024)
 
 /* MEMP_NUM_PBUF: the number of memp struct pbufs. If the application
  *    sends a lot of data out of ROM (or other static memory), this
@@ -94,13 +94,13 @@
 #define MEMP_NUM_PBUF           16
 /* MEMP_NUM_RAW_PCB: the number of UDP protocol control blocks. One
  *    per active RAW "connection". */
-#define MEMP_NUM_RAW_PCB        10
+#define MEMP_NUM_RAW_PCB        5
 /* MEMP_NUM_UDP_PCB: the number of UDP protocol control blocks. One
  *    per active UDP "connection". */
-#define MEMP_NUM_UDP_PCB        10
+#define MEMP_NUM_UDP_PCB        5
 /* MEMP_NUM_TCP_PCB: the number of simulatenously active TCP
  *    connections. */
-#define MEMP_NUM_TCP_PCB        10
+#define MEMP_NUM_TCP_PCB        40
 /* MEMP_NUM_TCP_PCB_LISTEN: the number of listening TCP
  *    connections. */
 #define MEMP_NUM_TCP_PCB_LISTEN 10
@@ -109,7 +109,7 @@
 #define MEMP_NUM_TCP_SEG        10
 /* MEMP_NUM_SYS_TIMEOUT: the number of simulateously active
  *    timeouts. */
-#define MEMP_NUM_SYS_TIMEOUT    17
+#define MEMP_NUM_SYS_TIMEOUT    20
 
 /* The following four are used only with the sequential API and can be
  *    set to 0 if the application only will use the raw API. */
@@ -154,10 +154,10 @@
 #define TCP_QUEUE_OOSEQ         1
 
 /* TCP Maximum segment size. */
-#define TCP_MSS                 1024
+#define TCP_MSS                 1460
 
 /* TCP sender buffer space (bytes). */
-#define TCP_SND_BUF             2048
+#define TCP_SND_BUF             2920
 
 /* TCP sender buffer space (pbufs). This must be at least = 2 *
  *    TCP_SND_BUF/TCP_MSS for things to work. */

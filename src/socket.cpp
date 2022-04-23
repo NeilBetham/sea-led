@@ -23,6 +23,8 @@ std::string to_string(struct pbuf* data) {
 
 template <typename T>
 err_t tcp_rx(void* arg, struct tcp_pcb* conn, struct pbuf* data, err_t error) {
+  if(arg == NULL) { return ERR_OK; }
+
   if(error != ERR_OK) {
     log_e("Socket RX Error: {}", error);
     ((T*)(arg))->error(error);
@@ -40,6 +42,8 @@ err_t tcp_rx(void* arg, struct tcp_pcb* conn, struct pbuf* data, err_t error) {
 
 template <typename T>
 err_t tcp_acc(void* arg, struct tcp_pcb* conn, err_t error) {
+  if(arg == NULL) { return ERR_OK; }
+
   if(error != ERR_OK) {
     log_e("Socket Accept Error: {}", error);
     return ERR_OK;
@@ -51,12 +55,16 @@ err_t tcp_acc(void* arg, struct tcp_pcb* conn, err_t error) {
 
 template <typename T>
 void tcp_err(void* arg, err_t error) {
+  if(arg == NULL) { return; }
+
   log_e("Socket Error: {}", error);
   ((T*)(arg))->error(error);
 }
 
 template <typename T>
 err_t tcp_tx(void* arg, struct tcp_pcb* conn, uint16_t len) {
+  if(arg == NULL) { return ERR_OK; }
+
   ((T*)(arg))->sent(len);
   return ERR_OK;
 }
@@ -140,7 +148,8 @@ Socket::Socket(struct tcp_pcb* conn, uint32_t port) {
 
 void Socket::close() {
   if(_mode == SocketMode::connection && _state == SocketState::connected) {
-    tcp_shutdown(_tcp_handle, 1, 1);
+    tcp_arg(_tcp_handle, NULL);
+    tcp_abort(_tcp_handle);
     _state = SocketState::disconnected;
     if(_delegate != NULL) {
       _delegate->handle_closed(this);
