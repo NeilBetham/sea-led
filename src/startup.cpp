@@ -82,7 +82,7 @@ void system_setup() {
   for(uint32_t index = 0; index < 1000; index++);
   WDT0_LOAD = 1200000000;  // Ten seconds at max sys clock
   for(uint32_t index = 0; index < 1000; index++);
-//  WDT0_CTL |= BIT_1;  // Enabled the WDT to reset the system
+  WDT0_CTL |= BIT_1;  // Enabled the WDT to reset the system
 }
 
 // Do all relevant early system init here
